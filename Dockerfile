@@ -22,8 +22,9 @@ FROM nginx:alpine
 # Copiar los archivos construidos (la carpeta dist) al servidor Nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# (Opcional) Copiar configuración personalizada de Nginx si fuera necesaria
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# IMPORTANTE: Copiar configuración personalizada de Nginx
+# Esta línea es vital para que Railway detecte el puerto y maneje las rutas de React
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Exponer el puerto 80
 EXPOSE 80
