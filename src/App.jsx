@@ -72,7 +72,7 @@ const NexusLanding = () => {
               </button>
             ))}
             <button 
-              onClick={() => window.open('https://wa.me/1234567890', '_blank')}
+              onClick={() => window.open('https://wa.me/593978815129', '_blank')}
               className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full font-bold hover:shadow-[0_0_20px_rgba(8,145,178,0.5)] transition-all transform hover:scale-105"
             >
               Cotizar Ahora
@@ -123,7 +123,7 @@ const NexusLanding = () => {
 
           <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
             <button 
-              onClick={() => window.open('https://wa.me/1234567890', '_blank')}
+              onClick={() => window.open('https://wa.me/593978815129', '_blank')}
               className="group relative px-8 py-4 bg-cyan-500 text-black font-bold text-lg rounded-full overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(6,182,212,0.6)]"
             >
               <div className="absolute inset-0 w-full h-full bg-white/20 transform -translate-x-full skew-x-12 group-hover:animate-shine"></div>
@@ -290,7 +290,7 @@ const NexusLanding = () => {
             </p>
             
             <button 
-              onClick={() => window.open('https://wa.me/1234567890', '_blank')}
+              onClick={() => window.open('https://wa.me/593978815129', '_blank')}
               className="px-10 py-5 bg-white text-slate-900 font-bold text-xl rounded-full hover:bg-cyan-50 hover:scale-105 transition-all shadow-[0_0_30px_rgba(255,255,255,0.3)]"
             >
               Comenzar Ahora
@@ -321,7 +321,7 @@ const NexusLanding = () => {
       {/* Floating WhatsApp Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <button 
-          onClick={() => window.open('https://wa.me/1234567890', '_blank')}
+          onClick={() => window.open('https://wa.me/593978815129', '_blank')}
           className="relative group flex items-center justify-center w-16 h-16 bg-[#25D366] rounded-full shadow-[0_0_20px_rgba(37,211,102,0.5)] hover:shadow-[0_0_30px_rgba(37,211,102,0.8)] transition-all hover:scale-110"
         >
           <div className="absolute inset-0 rounded-full border-2 border-[#25D366] animate-ping opacity-75"></div>
