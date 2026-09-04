@@ -6,6 +6,7 @@ import Beneficios from '@/components/Beneficios'
 import ContactoCTA from '@/components/ContactoCTA'
 import Footer from '@/components/Footer'
 import WhatsAppFAB from '@/components/WhatsAppFAB'
+import ChatWidget from '@/components/ChatWidget'
 
 export default function Home() {
   return (
@@ -18,6 +19,7 @@ export default function Home() {
       <ContactoCTA />
       <Footer />
       <WhatsAppFAB />
+      <ChatWidget />
     </div>
   )
 }
