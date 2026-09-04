@@ -72,9 +72,13 @@ create table if not exists public.nexus_content (
 
 -- ── updated_at maintenance ───────────────────────────────────────────────────
 
+-- search_path is pinned empty so the function cannot resolve objects through a
+-- caller-controlled schema order (Supabase linter 0011).
 create or replace function public.nexus_touch_updated_at()
 returns trigger
 language plpgsql
+security invoker
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
@@ -99,3 +103,6 @@ alter table public.nexus_messages      enable row level security;
 alter table public.nexus_leads         enable row level security;
 alter table public.nexus_prompts       enable row level security;
 alter table public.nexus_content       enable row level security;
+
+-- Applied to liberty-trading-pro (njszztijddpsbcpfsufi) on 2026-09-05 as
+-- migrations nexus_agent_schema + nexus_touch_updated_at_fix_search_path.
