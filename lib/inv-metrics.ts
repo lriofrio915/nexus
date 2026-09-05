@@ -355,7 +355,9 @@ export const EXPERIENCE_LABEL: Record<ExperienceLevel, string> = {
 export const DOCUMENT_KIND_LABEL: Record<DocumentKind, string> = {
   cedula_frente: 'Cédula (frente)',
   cedula_reverso: 'Cédula (reverso)',
-  servicio_basico: 'Planilla de servicio básico',
+  // Anything that proves name and address together: the broker accepts a
+  // utility bill, an internet or mobile plan, or a bank or card statement.
+  servicio_basico: 'Comprobante de domicilio',
   comprobante_ingresos: 'Comprobante de ingresos',
   otro: 'Otro documento',
 }

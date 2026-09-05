@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Cpu, ShieldCheck } from 'lucide-react'
 import {
   DOCUMENT_KIND_LABEL,
-  DOCUMENT_KINDS,
+  type DocumentKind,
   EMPLOYMENT_LABEL,
   EXPERIENCE_LABEL,
   FUNDS_SOURCE_LABEL,
@@ -26,6 +26,20 @@ const ERROR_MESSAGE: Record<string, string> = {
   limite: 'Demasiados envíos seguidos. Espera un minuto e inténtalo de nuevo.',
   guardar: 'No se pudo guardar la solicitud. Escríbenos por WhatsApp y lo resolvemos.',
 }
+
+/**
+ * What the public form asks for. Income proof is not requested here: the broker
+ * only needs it later and asking for it up front costs submissions. The address
+ * document is the one that matters, so it carries the list of what counts.
+ */
+const REQUESTED_DOCUMENTS: { kind: DocumentKind; hint?: string }[] = [
+  { kind: 'cedula_frente' },
+  { kind: 'cedula_reverso' },
+  {
+    kind: 'servicio_basico',
+    hint: 'Sirve una factura de luz, agua, internet o plan celular, o el estado de cuenta de tu tarjeta de crédito o de tu cuenta de ahorros. Tiene que verse tu nombre y la dirección que escribiste arriba.',
+  },
+]
 
 const inputClass =
   'w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-cyan-500'
@@ -65,7 +79,7 @@ export default async function OnboardingPage({
           <h1 className="text-2xl sm:text-3xl font-bold">Apertura de cuenta en Interactive Brokers</h1>
           <p className="text-slate-400 mt-2">
             Completa este formulario para iniciar la apertura de tu cuenta de inversión. Son los
-            mismos datos que el bróker exige; mientras más completo lo envíes, más rápido avanza.
+            mismos datos que el bróker exige.
           </p>
         </div>
 
@@ -118,7 +132,10 @@ export default async function OnboardingPage({
             </label>
           </Section>
 
-          <Section title="Domicilio">
+          <Section
+            title="Domicilio"
+            hint="Escribe exactamente la misma dirección que aparece en el estado de cuenta de tu tarjeta de crédito, en el de tu cuenta de ahorros, o en una factura de servicio básico, de plan de internet o de plan celular. Más abajo vas a subir uno de esos documentos, y tu nombre y tu dirección tienen que coincidir con lo que escribas aquí."
+          >
             <label className="block sm:col-span-2">
               <span className={spanClass}>Dirección</span>
               <input name="address_line" className={inputClass} />
@@ -270,14 +287,15 @@ export default async function OnboardingPage({
             title="Documentos"
             hint="JPG, PNG, WEBP o PDF, hasta 8 MB por archivo. Puedes enviarlos después si no los tienes a mano."
           >
-            {DOCUMENT_KINDS.filter((kind) => kind !== 'otro').map((kind) => (
-              <label key={kind} className="block">
+            {REQUESTED_DOCUMENTS.map(({ kind, hint }) => (
+              <label key={kind} className={hint ? 'block sm:col-span-2' : 'block'}>
                 <span className={spanClass}>{DOCUMENT_KIND_LABEL[kind]}</span>
+                {hint && <span className="block text-xs text-slate-500 mt-0.5">{hint}</span>}
                 <input
                   name={`doc_${kind}`}
                   type="file"
                   accept="image/jpeg,image/png,image/webp,application/pdf"
-                  className={inputClass}
+                  className={`${inputClass} mt-1`}
                 />
               </label>
             ))}
