@@ -39,8 +39,12 @@ export default function BarChart({ data, height = 180, emptyMessage }: Props) {
   const width = data.length * (barWidth + gap) - gap
   const zeroY = (max / span) * height
 
-  // Labels get crowded past a couple dozen bars, so only some are drawn.
+  // Labels get crowded past a couple dozen bars, so only some are drawn. A
+  // phone fits about a third of what a desktop card does, so the extra ones are
+  // rendered but hidden below `sm` rather than dropped: the same markup serves
+  // both widths without measuring the viewport on the server.
   const labelEvery = Math.ceil(data.length / 12)
+  const mobileEvery = Math.ceil(data.length / 4)
 
   return (
     <div className="space-y-2">
@@ -84,11 +88,17 @@ export default function BarChart({ data, height = 180, emptyMessage }: Props) {
         })}
       </svg>
 
-      <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+      <div className="flex justify-between gap-1 text-[10px] text-slate-500 font-mono">
         {data
-          .filter((_, i) => i % labelEvery === 0)
-          .map((d, i) => (
-            <span key={d.label + i}>{d.label}</span>
+          .map((d, i) => ({ ...d, index: i }))
+          .filter((d) => d.index % labelEvery === 0)
+          .map((d) => (
+            <span
+              key={d.label + d.index}
+              className={d.index % mobileEvery === 0 ? '' : 'hidden sm:inline'}
+            >
+              {d.label}
+            </span>
           ))}
       </div>
     </div>

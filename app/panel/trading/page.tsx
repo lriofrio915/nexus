@@ -148,7 +148,7 @@ export default async function TradingPage({
     <div className="space-y-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Trading</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Trading</h1>
           <p className="text-slate-400 mt-2">
             Estado financiero del negocio. Las operaciones llegan de NinjaTrader; los
             costos los administras en{' '}
@@ -159,12 +159,12 @@ export default async function TradingPage({
           </p>
         </div>
 
-        <nav className="flex gap-1 rounded-full border border-white/10 bg-slate-900/50 p-1">
+        <nav className="flex gap-1 rounded-full border border-white/10 bg-slate-900/50 p-1 self-start max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(['day', 'week', 'month', 'all'] as const).map((p) => (
             <Link
               key={p}
               href={`/panel/trading?periodo=${p}`}
-              className={`px-4 py-1.5 rounded-full text-sm transition-colors ${
+              className={`px-3 sm:px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
                 p === period
                   ? 'bg-cyan-500 text-black font-semibold'
                   : 'text-slate-400 hover:text-white'
@@ -307,7 +307,7 @@ export default async function TradingPage({
           </p>
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-white/10">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[48rem] text-sm">
               <thead className="bg-slate-900 text-slate-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Estrategia</th>
@@ -375,7 +375,7 @@ export default async function TradingPage({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {ntAccounts.map((a) => {
                 const m = accountMap.find((x) => x.account === a.name)
                 const strat = m?.strategy_id
@@ -430,7 +430,7 @@ export default async function TradingPage({
 
             {byAccount.some((a) => a.trades > 0) && (
               <div className="overflow-x-auto rounded-2xl border border-white/10">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[48rem] text-sm">
                   <thead className="bg-slate-900 text-slate-400 text-left">
                     <tr>
                       <th className="px-4 py-3 font-medium">Cuenta</th>
@@ -475,7 +475,7 @@ export default async function TradingPage({
           <p className="text-slate-400 text-sm">Sin posiciones abiertas.</p>
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-white/10">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[48rem] text-sm">
               <thead className="bg-slate-900 text-slate-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Cuenta</th>

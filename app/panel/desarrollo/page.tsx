@@ -132,7 +132,7 @@ export default async function DesarrolloPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Desarrollo de software</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Desarrollo de software</h1>
         <p className="text-slate-400 mt-2 max-w-2xl">
           Los proyectos que se construyen para clientes: qué incluye cada uno, qué se facturó
           y cuánto se ha cobrado realmente.
@@ -183,7 +183,7 @@ export default async function DesarrolloPage() {
             return (
               <div
                 key={project.id}
-                className="rounded-2xl border border-white/10 bg-slate-900/50 p-5"
+                className="rounded-2xl border border-white/10 bg-slate-900/50 p-4 sm:p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -259,7 +259,7 @@ export default async function DesarrolloPage() {
       </section>
 
       {/* ── Alta de proyecto ─────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-5">
+      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-4 sm:p-5">
         <h2 className="font-bold mb-4">Agregar proyecto</h2>
 
         {clients.length === 0 ? (
@@ -267,8 +267,8 @@ export default async function DesarrolloPage() {
             Primero registra un cliente en el formulario de abajo.
           </p>
         ) : (
-          <form action={createProject} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <label className="block md:col-span-2">
+          <form action={createProject} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <label className="block sm:col-span-2">
               <span className="text-xs text-slate-400 block mb-1">Nombre del proyecto</span>
               <input name="name" required className={inputClass} />
             </label>
@@ -295,7 +295,7 @@ export default async function DesarrolloPage() {
               </select>
             </label>
 
-            <label className="block md:col-span-2">
+            <label className="block sm:col-span-2">
               <span className="text-xs text-slate-400 block mb-1">Resumen</span>
               <input name="summary" className={inputClass} />
             </label>
@@ -333,7 +333,7 @@ export default async function DesarrolloPage() {
               <input type="date" name="started_on" className={inputClass} />
             </label>
 
-            <div className="md:col-span-4">
+            <div className="sm:col-span-2 lg:col-span-4">
               <button
                 type="submit"
                 className="px-6 py-2.5 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 text-sm font-bold text-white"
@@ -354,7 +354,7 @@ export default async function DesarrolloPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {clients.map((c) => (
-              <div key={c.id} className="rounded-2xl border border-white/10 bg-slate-900/50 p-5">
+              <div key={c.id} className="rounded-2xl border border-white/10 bg-slate-900/50 p-4 sm:p-5">
                 <p className="font-bold text-white">{c.name}</p>
                 {c.company && <p className="text-sm text-slate-400">{c.company}</p>}
                 {c.location && <p className="text-xs text-slate-500 mt-2">{c.location}</p>}
@@ -371,9 +371,9 @@ export default async function DesarrolloPage() {
       </section>
 
       {/* ── Alta de cliente ──────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-5">
+      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-4 sm:p-5">
         <h2 className="font-bold mb-4">Agregar cliente</h2>
-        <form action={createClient} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form action={createClient} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <label className="block">
             <span className="text-xs text-slate-400 block mb-1">Nombre</span>
             <input name="name" required className={inputClass} />
@@ -404,7 +404,7 @@ export default async function DesarrolloPage() {
             <input name="notes" className={inputClass} />
           </label>
 
-          <div className="md:col-span-3">
+          <div className="sm:col-span-2 lg:col-span-3">
             <button
               type="submit"
               className="px-6 py-2.5 rounded-full border border-white/20 text-sm font-bold text-white hover:bg-white/5"

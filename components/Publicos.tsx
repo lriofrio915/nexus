@@ -2,17 +2,17 @@ import { publicos, stack } from '@/lib/site-config'
 
 export default function Publicos() {
   return (
-    <section className="relative z-10 py-20 bg-slate-900/50">
-      <div className="container mx-auto px-6">
+    <section className="relative z-10 py-16 sm:py-20 bg-slate-900/50">
+      <div className="container mx-auto px-4 sm:px-6">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Para quién trabajamos</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-balance">Para quién trabajamos</h2>
           <p className="text-slate-400 max-w-2xl mx-auto">
             Desde una persona con una idea hasta empresas con equipos y sistemas ya
             andando.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-12 sm:mb-16">
           {publicos.map((pub) => {
             const Icon = pub.icon
             return (

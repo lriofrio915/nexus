@@ -124,7 +124,7 @@ export default async function GastosPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Gastos</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Gastos</h1>
         <p className="text-slate-400 mt-2 max-w-2xl">
           Todo lo que cuesta sostener el negocio. Los pagos únicos se cargan en su fecha;
           los recurrentes se devengan cada periodo desde que empiezan.
@@ -133,7 +133,7 @@ export default async function GastosPage() {
 
       {error && <p className="text-sm text-red-400">Error: {error.message}</p>}
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Stat
           label="Invertido a la fecha"
           value={money(totalAccrued)}
@@ -148,10 +148,10 @@ export default async function GastosPage() {
       </section>
 
       {/* ── Alta ─────────────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-5">
+      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-4 sm:p-5">
         <h2 className="font-bold mb-4">Agregar gasto</h2>
-        <form action={createExpense} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <label className="block md:col-span-2">
+        <form action={createExpense} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <label className="block sm:col-span-2">
             <span className="text-xs text-slate-400 block mb-1">Concepto</span>
             <input name="concept" required placeholder="VPS, pase directo…" className={inputClass} />
           </label>
@@ -205,7 +205,7 @@ export default async function GastosPage() {
             <input type="date" name="ends_on" className={inputClass} />
           </label>
 
-          <label className="block md:col-span-2">
+          <label className="block sm:col-span-2">
             <span className="text-xs text-slate-400 block mb-1">Cuenta (opcional)</span>
             <select name="account" className={inputClass} defaultValue="">
               <option value="">Gasto general del negocio</option>
@@ -217,12 +217,12 @@ export default async function GastosPage() {
             </select>
           </label>
 
-          <label className="block md:col-span-2">
+          <label className="block sm:col-span-2">
             <span className="text-xs text-slate-400 block mb-1">Notas</span>
             <input name="notes" className={inputClass} />
           </label>
 
-          <div className="md:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-4">
             <button
               type="submit"
               className="px-6 py-2.5 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 text-sm font-bold text-white"
@@ -243,7 +243,7 @@ export default async function GastosPage() {
           expenses.map((e) => (
             <div
               key={e.id}
-              className="rounded-2xl border border-white/10 bg-slate-900/50 p-5"
+              className="rounded-2xl border border-white/10 bg-slate-900/50 p-4 sm:p-5"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
                 <p className="font-bold text-white">{e.concept}</p>
@@ -258,10 +258,10 @@ export default async function GastosPage() {
                 </p>
               </div>
 
-              <form action={updateExpense} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <form action={updateExpense} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <input type="hidden" name="id" value={e.id} />
 
-                <label className="block md:col-span-2">
+                <label className="block sm:col-span-2">
                   <span className="text-xs text-slate-400 block mb-1">Concepto</span>
                   <input
                     name="concept"
@@ -336,7 +336,7 @@ export default async function GastosPage() {
                   />
                 </label>
 
-                <label className="block md:col-span-2">
+                <label className="block sm:col-span-2">
                   <span className="text-xs text-slate-400 block mb-1">Cuenta</span>
                   <select name="account" defaultValue={e.account ?? ''} className={inputClass}>
                     <option value="">Gasto general del negocio</option>
@@ -348,12 +348,12 @@ export default async function GastosPage() {
                   </select>
                 </label>
 
-                <label className="block md:col-span-2">
+                <label className="block sm:col-span-2">
                   <span className="text-xs text-slate-400 block mb-1">Notas</span>
                   <input name="notes" defaultValue={e.notes ?? ''} className={inputClass} />
                 </label>
 
-                <div className="md:col-span-4">
+                <div className="sm:col-span-2 lg:col-span-4">
                   <button
                     type="submit"
                     className="px-5 py-2 rounded-full border border-white/20 text-sm font-bold text-white hover:bg-white/5"

@@ -41,6 +41,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#020617',
+  width: 'device-width',
+  initialScale: 1,
+  // Pinch-zoom stays available: capping it would fail WCAG 1.4.4.
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({

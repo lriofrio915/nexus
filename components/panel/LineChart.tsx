@@ -101,10 +101,14 @@ export default function LineChart({ data, height = 200, emptyMessage, reference 
         />
       </svg>
 
-      <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-        <span>{data[0].label}</span>
-        <span className={positive ? 'text-emerald-400' : 'text-red-400'}>{money(last)}</span>
-        {data.length > 1 && <span>{data[data.length - 1].label}</span>}
+      <div className="flex justify-between gap-2 text-[10px] text-slate-500 font-mono">
+        <span className="truncate">{data[0].label}</span>
+        <span
+          className={`whitespace-nowrap ${positive ? 'text-emerald-400' : 'text-red-400'}`}
+        >
+          {money(last)}
+        </span>
+        {data.length > 1 && <span className="truncate">{data[data.length - 1].label}</span>}
       </div>
     </div>
   )

@@ -145,7 +145,7 @@ export default async function CuentasPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <label className="block">
                   <span className="text-xs text-slate-400 block mb-1">Etiqueta</span>
                   <input
@@ -216,15 +216,15 @@ export default async function CuentasPage() {
       </div>
 
       {/* ── Preparar una cuenta que aún no reporta ───────────────────────── */}
-      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-5">
+      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-4 sm:p-5">
         <h2 className="font-bold mb-1">Preparar una cuenta</h2>
         <p className="text-sm text-slate-400 mb-4">
           Para dejar listas las cuentas de PJ Capital antes de que NinjaTrader las reporte.
           El nombre debe coincidir exactamente con el que usa la plataforma.
         </p>
 
-        <form action={saveAccount} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <label className="block md:col-span-2">
+        <form action={saveAccount} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <label className="block sm:col-span-2">
             <span className="text-xs text-slate-400 block mb-1">Nombre en NinjaTrader</span>
             <input
               name="account"
@@ -257,7 +257,7 @@ export default async function CuentasPage() {
           </label>
           <input type="hidden" name="prop_firm" value="PJ Capital" />
           <input type="hidden" name="active" value="on" />
-          <div className="md:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-4">
             <button
               type="submit"
               className="px-5 py-2 rounded-full border border-white/20 text-sm font-bold text-white hover:bg-white/5"

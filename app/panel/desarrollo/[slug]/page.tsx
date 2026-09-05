@@ -375,7 +375,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
         </Link>
 
         <div className="flex flex-wrap items-center gap-3 mt-3">
-          <h1 className="text-3xl font-bold">{project.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">{project.name}</h1>
           <span
             className={`text-xs px-2 py-0.5 rounded-full border ${projectStatusClass(project.status)}`}
           >
@@ -432,7 +432,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
         </div>
       </div>
 
-      <section className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Inicio" value={shortDate(project.started_on)} />
         <Stat label="Entrega" value={shortDate(project.delivered_on)} />
         <Stat
@@ -508,7 +508,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
 
         <form
           action={addDeliverable}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-2xl border border-white/10 bg-slate-900/30 p-5"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 rounded-2xl border border-white/10 bg-slate-900/30 p-4 sm:p-5"
         >
           <input type="hidden" name="project_id" value={project.id} />
           <input type="hidden" name="slug" value={slug} />
@@ -519,12 +519,12 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
             <input name="title" required className={inputClass} />
           </label>
 
-          <label className="block md:col-span-2">
+          <label className="block sm:col-span-2">
             <span className="text-xs text-slate-400 block mb-1">Descripción</span>
             <input name="detail" className={inputClass} />
           </label>
 
-          <div className="md:col-span-3">
+          <div className="sm:col-span-2 lg:col-span-3">
             <button
               type="submit"
               className="px-5 py-2 rounded-full border border-white/20 text-sm font-bold text-white hover:bg-white/5"
@@ -548,7 +548,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
           return (
             <div
               key={invoice.id}
-              className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 space-y-5"
+              className="rounded-2xl border border-white/10 bg-slate-900/50 p-4 sm:p-5 space-y-5"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -567,7 +567,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
 
               {/* Líneas */}
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[34rem] text-sm">
                   <thead>
                     <tr className="text-xs uppercase tracking-wider text-slate-500 border-b border-white/10">
                       <th className="text-left py-2 font-normal">Concepto</th>
@@ -614,7 +614,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
                 </table>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Stat
                   label="Total"
                   value={money(totals.total)}
@@ -636,12 +636,12 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
               {invoice.notes && <p className="text-sm text-slate-400">{invoice.notes}</p>}
 
               {/* Agregar línea */}
-              <form action={addItem} className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <form action={addItem} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                 <input type="hidden" name="invoice_id" value={invoice.id} />
                 <input type="hidden" name="slug" value={slug} />
                 <input type="hidden" name="position" value={items.length + 1} />
 
-                <label className="block md:col-span-2">
+                <label className="block sm:col-span-2">
                   <span className="text-xs text-slate-400 block mb-1">Concepto</span>
                   <input name="description" required className={inputClass} />
                 </label>
@@ -682,7 +682,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
                   />
                 </label>
 
-                <div className="md:col-span-5">
+                <div className="sm:col-span-2 lg:col-span-3 xl:col-span-5">
                   <button
                     type="submit"
                     className="px-5 py-2 rounded-full border border-white/20 text-sm font-bold text-white hover:bg-white/5"
@@ -742,7 +742,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
                   </ul>
                 )}
 
-                <form action={addPayment} className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <form action={addPayment} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                   <input type="hidden" name="invoice_id" value={invoice.id} />
                   <input type="hidden" name="slug" value={slug} />
 
@@ -784,7 +784,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
                     <input name="notes" className={inputClass} />
                   </label>
 
-                  <div className="md:col-span-5">
+                  <div className="sm:col-span-2 lg:col-span-3 xl:col-span-5">
                     <button
                       type="submit"
                       className="px-5 py-2 rounded-full border border-white/20 text-sm font-bold text-white hover:bg-white/5"
@@ -800,7 +800,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
                 <summary className="text-sm text-slate-400 cursor-pointer hover:text-cyan-400">
                   Editar datos de la factura
                 </summary>
-                <form action={updateInvoice} className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                <form action={updateInvoice} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
                   <input type="hidden" name="id" value={invoice.id} />
                   <input type="hidden" name="slug" value={slug} />
 
@@ -856,12 +856,12 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
                     />
                   </label>
 
-                  <label className="block md:col-span-3">
+                  <label className="block sm:col-span-2 lg:col-span-3">
                     <span className="text-xs text-slate-400 block mb-1">Notas</span>
                     <input name="notes" defaultValue={invoice.notes ?? ''} className={inputClass} />
                   </label>
 
-                  <div className="md:col-span-4">
+                  <div className="sm:col-span-2 lg:col-span-4">
                     <button
                       type="submit"
                       className="px-5 py-2 rounded-full border border-white/20 text-sm font-bold text-white hover:bg-white/5"
@@ -878,12 +878,12 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
         {/* Nueva factura */}
         <form
           action={createInvoice}
-          className="grid grid-cols-1 md:grid-cols-4 gap-4 rounded-2xl border border-white/10 bg-slate-900/30 p-5"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 rounded-2xl border border-white/10 bg-slate-900/30 p-4 sm:p-5"
         >
           <input type="hidden" name="project_id" value={project.id} />
           <input type="hidden" name="slug" value={slug} />
 
-          <div className="md:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-4">
             <h3 className="font-bold">Nueva factura</h3>
           </div>
 
@@ -910,12 +910,12 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
             </select>
           </label>
 
-          <label className="block md:col-span-4">
+          <label className="block sm:col-span-2 lg:col-span-4">
             <span className="text-xs text-slate-400 block mb-1">Notas</span>
             <input name="notes" className={inputClass} />
           </label>
 
-          <div className="md:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-4">
             <button
               type="submit"
               className="px-6 py-2.5 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 text-sm font-bold text-white"
@@ -927,13 +927,13 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
       </section>
 
       {/* ── Datos del proyecto ───────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-5">
+      <section className="rounded-2xl border border-white/10 bg-slate-900/30 p-4 sm:p-5">
         <h2 className="font-bold mb-4">Datos del proyecto</h2>
-        <form action={updateProject} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <form action={updateProject} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <input type="hidden" name="id" value={project.id} />
           <input type="hidden" name="slug" value={slug} />
 
-          <label className="block md:col-span-2">
+          <label className="block sm:col-span-2">
             <span className="text-xs text-slate-400 block mb-1">Nombre</span>
             <input name="name" defaultValue={project.name} required className={inputClass} />
           </label>
@@ -961,12 +961,12 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
             />
           </label>
 
-          <label className="block md:col-span-4">
+          <label className="block sm:col-span-2 lg:col-span-4">
             <span className="text-xs text-slate-400 block mb-1">Resumen</span>
             <input name="summary" defaultValue={project.summary ?? ''} className={inputClass} />
           </label>
 
-          <label className="block md:col-span-2">
+          <label className="block sm:col-span-2">
             <span className="text-xs text-slate-400 block mb-1">Sitio web</span>
             <input
               name="site_url"
@@ -976,7 +976,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
             />
           </label>
 
-          <label className="block md:col-span-2">
+          <label className="block sm:col-span-2">
             <span className="text-xs text-slate-400 block mb-1">Repositorio</span>
             <input
               name="repo_url"
@@ -986,7 +986,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
             />
           </label>
 
-          <label className="block md:col-span-4">
+          <label className="block sm:col-span-2 lg:col-span-4">
             <span className="text-xs text-slate-400 block mb-1">
               Documento de factura para el cliente
             </span>
@@ -1052,12 +1052,12 @@ export default async function ProyectoPage({ params }: { params: Promise<{ slug:
             />
           </label>
 
-          <label className="block md:col-span-3">
+          <label className="block sm:col-span-2 lg:col-span-3">
             <span className="text-xs text-slate-400 block mb-1">Notas internas</span>
             <input name="notes" defaultValue={project.notes ?? ''} className={inputClass} />
           </label>
 
-          <div className="md:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-4">
             <button
               type="submit"
               className="px-6 py-2.5 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 text-sm font-bold text-white"

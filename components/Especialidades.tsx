@@ -5,14 +5,14 @@ export default function Especialidades() {
   return (
     <section
       id="especialidades"
-      className="relative z-10 py-24 border-y border-white/5 bg-slate-950"
+      className="relative z-10 py-16 sm:py-24 border-y border-white/5 bg-slate-950"
     >
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-16">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10 sm:mb-16">
           <span className="text-sm uppercase tracking-widest text-purple-400 font-semibold">
             Dónde somos especialistas
           </span>
-          <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mt-4 mb-4 text-balance">
             Dos dominios, conocimiento profundo
           </h2>
           <p className="text-slate-400 max-w-2xl mx-auto">
@@ -21,13 +21,13 @@ export default function Especialidades() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {especialidades.map((esp) => {
             const Icon = esp.icon
             return (
               <div
                 key={esp.title}
-                className={`relative p-8 md:p-10 rounded-3xl bg-slate-900/70 border border-white/10 transition-all duration-300 ${esp.borderHover}`}
+                className={`relative overflow-hidden p-6 sm:p-8 md:p-10 rounded-3xl bg-slate-900/70 border border-white/10 transition-all duration-300 ${esp.borderHover}`}
               >
                 <div
                   className={`absolute -top-16 -right-16 w-64 h-64 rounded-full blur-[90px] opacity-60 pointer-events-none ${esp.glow}`}
@@ -43,10 +43,10 @@ export default function Especialidades() {
                   >
                     {esp.eyebrow}
                   </span>
-                  <h3 className="text-2xl md:text-3xl font-bold mt-3 mb-4 text-white">
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mt-3 mb-4 text-white">
                     {esp.title}
                   </h3>
-                  <p className="text-slate-400 mb-8 leading-relaxed">{esp.description}</p>
+                  <p className="text-slate-400 mb-6 sm:mb-8 leading-relaxed">{esp.description}</p>
                   <ul className="space-y-3">
                     {esp.features.map((feature) => (
                       <li
@@ -66,7 +66,7 @@ export default function Especialidades() {
           })}
         </div>
 
-        <p className="text-center text-slate-500 mt-12 max-w-2xl mx-auto">
+        <p className="text-center text-slate-500 mt-10 sm:mt-12 max-w-2xl mx-auto">
           ¿Tu proyecto es de otro rubro? {siteConfig.name} igual lo desarrolla: el proceso
           es el mismo y el software sigue siendo tuyo.
         </p>

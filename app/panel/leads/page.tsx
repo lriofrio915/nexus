@@ -24,7 +24,7 @@ export default async function LeadsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Leads</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold">Leads</h1>
 
       {error && <p className="text-sm text-red-400">Error: {error.message}</p>}
       {!error && leads.length === 0 && (
@@ -33,7 +33,7 @@ export default async function LeadsPage() {
 
       {leads.length > 0 && (
         <div className="overflow-x-auto rounded-2xl border border-white/10">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[46rem] text-sm">
             <thead className="bg-slate-900 text-slate-400 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Fecha</th>

@@ -4,8 +4,17 @@
 
 html {
   scroll-behavior: smooth;
+  /* Decorative blurs and section glows are positioned outside their boxes on
+     purpose. `clip` contains them without creating a scroll container, so
+     position: sticky keeps working -- overflow-x: hidden would break it. */
+  overflow-x: clip;
 }
 
 body {
   background-color: #020617; /* slate-950 */
+}
+
+/* Anchors sit under the fixed navbar otherwise. */
+[id] {
+  scroll-margin-top: 5rem;
 }

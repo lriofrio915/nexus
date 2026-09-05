@@ -162,7 +162,7 @@ export default async function PanelHome() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Panel</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Panel</h1>
         <p className="text-slate-400 mt-2">
           Resumen del negocio. El detalle vive en{' '}
           <Link href="/panel/trading" className="text-cyan-400 hover:underline">
@@ -178,7 +178,7 @@ export default async function PanelHome() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {cards.map((card) => {
           const Icon = card.icon
           return (
