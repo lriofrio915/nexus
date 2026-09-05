@@ -8,17 +8,19 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: `${siteConfig.name} | Asistentes de IA en WhatsApp`,
+    default: `${siteConfig.name} | Software a medida, gestión médica y trading cuantitativo`,
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
   keywords: [
-    'automatización WhatsApp',
-    'chatbot IA',
-    'asistente virtual',
+    'desarrollo de software a medida',
+    'software de gestión médica',
+    'historia clínica electrónica',
+    'trading cuantitativo',
+    'algoritmos de trading',
+    'automatización de negocios',
     'agentes de IA',
     'Ecuador',
-    'automatización de negocios',
   ],
   authors: [{ name: siteConfig.legalName }],
   openGraph: {

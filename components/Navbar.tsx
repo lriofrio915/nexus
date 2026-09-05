@@ -50,7 +50,7 @@ export default function Navbar() {
             rel="noopener noreferrer"
             className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full font-bold hover:shadow-[0_0_20px_rgba(8,145,178,0.5)] transition-all transform hover:scale-105"
           >
-            Cotizar Ahora
+            Cotizar proyecto
           </a>
         </div>
 

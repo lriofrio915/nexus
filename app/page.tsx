@@ -1,8 +1,10 @@
 import BackgroundFX from '@/components/BackgroundFX'
 import Navbar from '@/components/Navbar'
 import Hero from '@/components/Hero'
-import Soluciones from '@/components/Soluciones'
-import Beneficios from '@/components/Beneficios'
+import Servicios from '@/components/Servicios'
+import Especialidades from '@/components/Especialidades'
+import Publicos from '@/components/Publicos'
+import Proceso from '@/components/Proceso'
 import ContactoCTA from '@/components/ContactoCTA'
 import Footer from '@/components/Footer'
 import WhatsAppFAB from '@/components/WhatsAppFAB'
@@ -14,8 +16,10 @@ export default function Home() {
       <BackgroundFX />
       <Navbar />
       <Hero />
-      <Soluciones />
-      <Beneficios />
+      <Servicios />
+      <Especialidades />
+      <Publicos />
+      <Proceso />
       <ContactoCTA />
       <Footer />
       <WhatsAppFAB />
