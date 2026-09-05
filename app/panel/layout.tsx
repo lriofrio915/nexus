@@ -11,17 +11,17 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <span className="font-bold tracking-wider">NEXUS</span>
           </Link>
           <nav className="flex gap-6 text-sm text-slate-300">
-            <Link href="/panel/conversaciones" className="hover:text-cyan-400">
-              Conversaciones
-            </Link>
-            <Link href="/panel/leads" className="hover:text-cyan-400">
-              Leads
-            </Link>
             <Link href="/panel/trading" className="hover:text-cyan-400">
               Trading
             </Link>
-            <Link href="/panel/prompt" className="hover:text-cyan-400">
-              Prompt
+            <Link href="/panel/trading/cuentas" className="hover:text-cyan-400">
+              Cuentas
+            </Link>
+            <Link href="/panel/trading/gastos" className="hover:text-cyan-400">
+              Gastos
+            </Link>
+            <Link href="/panel/leads" className="hover:text-cyan-400">
+              Leads
             </Link>
           </nav>
           <div className="ml-auto flex items-center gap-6">

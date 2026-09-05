@@ -1,48 +1,110 @@
 import Link from 'next/link'
-import { MessageSquare, Users, FileText } from 'lucide-react'
+import { LineChart, Users, Wallet, Landmark } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-server'
+import {
+  accrueExpenses,
+  money,
+  pnlClass,
+  signedMoney,
+  sumMoney,
+  type ExpenseRow,
+} from '@/lib/trading-metrics'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Panel', robots: { index: false, follow: false } }
 
-async function counts() {
+async function overview() {
   try {
     const db = supabaseAdmin()
-    const [conversations, leads] = await Promise.all([
-      db.from('nexus_conversations').select('*', { count: 'exact', head: true }),
+    const [leads, trades, expenses, accounts] = await Promise.all([
       db.from('nexus_leads').select('*', { count: 'exact', head: true }),
+      db.from('nexus_nt_trades').select('pnl_currency'),
+      db
+        .from('nexus_biz_expenses')
+        .select('id, concept, category, amount, kind, recurrence, starts_on, ends_on, account'),
+      db.from('nexus_nt_accounts').select('cash_value'),
     ])
+
+    const pnl = sumMoney((trades.data ?? []).map((t) => t.pnl_currency as number | null))
+    const invested = sumMoney(
+      accrueExpenses((expenses.data ?? []) as ExpenseRow[], null, new Date()).map(
+        (c) => c.amount
+      )
+    )
+    const capital = sumMoney((accounts.data ?? []).map((a) => a.cash_value as number | null))
+
     return {
-      conversations: conversations.count ?? 0,
       leads: leads.count ?? 0,
-      error: conversations.error?.message ?? leads.error?.message ?? null,
+      pnl,
+      invested,
+      capital,
+      net: pnl - invested,
+      error:
+        leads.error?.message ??
+        trades.error?.message ??
+        expenses.error?.message ??
+        accounts.error?.message ??
+        null,
     }
   } catch (err) {
     return {
-      conversations: 0,
       leads: 0,
+      pnl: 0,
+      invested: 0,
+      capital: 0,
+      net: 0,
       error: err instanceof Error ? err.message : String(err),
     }
   }
 }
 
 export default async function PanelHome() {
-  const { conversations, leads, error } = await counts()
+  const { leads, pnl, invested, capital, net, error } = await overview()
 
   const cards = [
     {
-      href: '/panel/conversaciones',
-      icon: MessageSquare,
-      label: 'Conversaciones',
-      value: conversations,
+      href: '/panel/trading',
+      icon: LineChart,
+      label: 'Utilidad del negocio',
+      value: signedMoney(net),
+      valueClass: pnlClass(net),
+      hint: 'Resultado operativo menos lo invertido',
     },
-    { href: '/panel/leads', icon: Users, label: 'Leads', value: leads },
-    { href: '/panel/prompt', icon: FileText, label: 'Prompt del agente', value: null },
+    {
+      href: '/panel/trading',
+      icon: Landmark,
+      label: 'Capital en cuentas',
+      value: money(capital),
+      hint: 'Suma de saldos reportados por NinjaTrader',
+    },
+    {
+      href: '/panel/trading/gastos',
+      icon: Wallet,
+      label: 'Invertido a la fecha',
+      value: money(invested),
+      hint: 'Pagos únicos y recurrentes devengados',
+    },
+    {
+      href: '/panel/leads',
+      icon: Users,
+      label: 'Leads',
+      value: String(leads),
+      hint: 'Contactos capturados en el sitio',
+    },
   ]
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Panel</h1>
+      <div>
+        <h1 className="text-3xl font-bold">Panel</h1>
+        <p className="text-slate-400 mt-2">
+          Resumen del negocio. El detalle vive en{' '}
+          <Link href="/panel/trading" className="text-cyan-400 hover:underline">
+            Trading
+          </Link>
+          .
+        </p>
+      </div>
 
       {error && (
         <p className="text-sm text-amber-400 bg-amber-950/40 border border-amber-500/30 rounded-lg px-4 py-3">
@@ -50,24 +112,29 @@ export default async function PanelHome() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((card) => {
           const Icon = card.icon
           return (
             <Link
-              key={card.href}
+              key={card.label}
               href={card.href}
               className="p-6 rounded-2xl bg-slate-900 border border-white/10 hover:border-cyan-500/50 transition-colors"
             >
               <Icon className="w-6 h-6 text-cyan-400 mb-4" />
               <p className="text-slate-400 text-sm">{card.label}</p>
-              {card.value !== null && (
-                <p className="text-3xl font-bold text-white mt-1">{card.value}</p>
-              )}
+              <p className={`text-2xl font-bold mt-1 ${card.valueClass ?? 'text-white'}`}>
+                {card.value}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">{card.hint}</p>
             </Link>
           )
         })}
       </div>
+
+      <p className="text-xs text-slate-500">
+        Resultado operativo acumulado: <span className={pnlClass(pnl)}>{signedMoney(pnl)}</span>
+      </p>
     </div>
   )
 }

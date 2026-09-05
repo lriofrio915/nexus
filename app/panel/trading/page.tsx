@@ -1,17 +1,40 @@
+import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabase-server'
+import BarChart from '@/components/panel/BarChart'
+import LineChart from '@/components/panel/LineChart'
+import Stat from '@/components/panel/Stat'
+import {
+  PERIOD_LABELS,
+  accountBreakdown,
+  accrueExpenses,
+  aggregateByPeriod,
+  businessSummary,
+  cumulative,
+  money,
+  monthlyBurn,
+  parsePeriod,
+  percent,
+  periodStart,
+  pnlClass,
+  ratio,
+  signedMoney,
+  strategyBreakdown,
+  type AccountMapRow,
+  type ExpenseRow,
+  type StrategyRow,
+  type TradeRow,
+} from '@/lib/trading-metrics'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Trading', robots: { index: false, follow: false } }
 
-interface AccountRow {
+interface NtAccountRow {
   name: string
   connection: string | null
   denomination: string | null
   cash_value: number | null
   realized_pnl: number | null
   unrealized_pnl: number | null
-  buying_power: number | null
-  net_liquidation: number | null
   reported_at: string
 }
 
@@ -21,154 +44,415 @@ interface PositionRow {
   market_position: string
   quantity: number
   average_price: number
-  reported_at: string
 }
 
-interface TradeRow {
-  id: string
+interface EquityRow {
+  day: string
   account: string
-  instrument: string
-  direction: string
-  quantity: number
-  entry_price: number
-  exit_price: number
-  pnl_points: number | null
-  pnl_currency: number | null
-  entry_at: string
-  exit_at: string
+  equity: number | null
 }
-
-interface ExecutionRow {
-  id: string
-  account: string
-  instrument: string
-  order_action: string | null
-  quantity: number
-  price: number
-  executed_at: string
-}
-
-const money = (v: number | null, ccy: string | null = 'USD') =>
-  v === null
-    ? '—'
-    : new Intl.NumberFormat('es-EC', {
-        style: 'currency',
-        currency: ccy === 'UsDollar' || !ccy ? 'USD' : ccy,
-        maximumFractionDigits: 2,
-      }).format(v)
 
 const when = (iso: string) => new Date(iso).toLocaleString('es-EC')
 
-/** Green above zero, red below, neutral at exactly zero or unknown. */
-function pnlClass(v: number | null): string {
-  if (v === null || v === 0) return 'text-slate-300'
-  return v > 0 ? 'text-emerald-400' : 'text-red-400'
-}
+export default async function TradingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string }>
+}) {
+  const period = parsePeriod((await searchParams).periodo)
+  const now = new Date()
+  const from = periodStart(period, now)
 
-export default async function TradingPage() {
   const db = supabaseAdmin()
 
-  const [accountsRes, positionsRes, tradesRes, executionsRes] = await Promise.all([
-    db.from('nexus_nt_accounts').select('*').order('name'),
-    db.from('nexus_nt_positions').select('*').order('account'),
-    db.from('nexus_nt_trades').select('*').order('exit_at', { ascending: false }).limit(50),
-    db
-      .from('nexus_nt_executions')
-      .select('id, account, instrument, order_action, quantity, price, executed_at')
-      .order('executed_at', { ascending: false })
-      .limit(25),
-  ])
-
-  const accounts = (accountsRes.data ?? []) as AccountRow[]
-  const positions = (positionsRes.data ?? []) as PositionRow[]
-  const trades = (tradesRes.data ?? []) as TradeRow[]
-  const executions = (executionsRes.data ?? []) as ExecutionRow[]
+  // Lifetime trades are fetched once and filtered in memory: the period slice
+  // and the lifetime figures both come from the same list, so ROI and
+  // break-even stay consistent with whatever period is on screen.
+  const [tradesRes, ntAccountsRes, positionsRes, mapRes, strategiesRes, expensesRes, equityRes] =
+    await Promise.all([
+      db
+        .from('nexus_nt_trades')
+        .select('id, account, instrument, direction, quantity, pnl_currency, exit_at')
+        .order('exit_at', { ascending: true }),
+      db.from('nexus_nt_accounts').select('*').order('name'),
+      db.from('nexus_nt_positions').select('*').order('account'),
+      db.from('nexus_biz_accounts').select('account, label, prop_firm, strategy_id, active'),
+      db.from('nexus_biz_strategies').select('id, name, kind').order('name'),
+      db
+        .from('nexus_biz_expenses')
+        .select('id, concept, category, amount, kind, recurrence, starts_on, ends_on, account'),
+      db
+        .from('nexus_biz_equity_daily')
+        .select('day, account, equity')
+        .order('day', { ascending: true }),
+    ])
 
   const error =
-    accountsRes.error ?? positionsRes.error ?? tradesRes.error ?? executionsRes.error
+    tradesRes.error ??
+    ntAccountsRes.error ??
+    positionsRes.error ??
+    mapRes.error ??
+    strategiesRes.error ??
+    expensesRes.error ??
+    equityRes.error
 
-  const totalRealized = trades.reduce((sum, t) => sum + (t.pnl_currency ?? 0), 0)
-  const winners = trades.filter((t) => (t.pnl_currency ?? 0) > 0).length
-  const winRate = trades.length > 0 ? Math.round((winners / trades.length) * 100) : null
+  const allTrades = (tradesRes.data ?? []) as TradeRow[]
+  const ntAccounts = (ntAccountsRes.data ?? []) as NtAccountRow[]
+  const positions = (positionsRes.data ?? []) as PositionRow[]
+  const accountMap = (mapRes.data ?? []) as AccountMapRow[]
+  const strategies = (strategiesRes.data ?? []) as StrategyRow[]
+  const expenses = (expensesRes.data ?? []) as ExpenseRow[]
+  const equity = (equityRes.data ?? []) as EquityRow[]
+
+  const periodTrades = from
+    ? allTrades.filter((t) => new Date(t.exit_at) >= from)
+    : allTrades
+
+  const periodCharges = accrueExpenses(expenses, from, now)
+  const allCharges = accrueExpenses(expenses, null, now)
+
+  const summary = businessSummary({ periodTrades, periodCharges, allTrades, allCharges })
+
+  // Daily buckets read well up to a few months; beyond that the chart is
+  // unreadable, so a full history is grouped by month.
+  const granularity = period === 'all' ? 'month' : 'day'
+  const buckets = aggregateByPeriod(periodTrades, granularity)
+  const curve = cumulative(buckets)
+
+  const byStrategy = strategyBreakdown(periodTrades, accountMap, strategies, periodCharges)
+  const byAccount = accountBreakdown(periodTrades, accountMap, strategies, periodCharges)
+
+  // Total equity per day across every account, for the capital curve.
+  const equityByDay = new Map<string, number>()
+  for (const e of equity) {
+    equityByDay.set(e.day, (equityByDay.get(e.day) ?? 0) + (e.equity ?? 0))
+  }
+  const equityCurve = [...equityByDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, value]) => ({ label: day.slice(5), value }))
+
+  const burn = monthlyBurn(expenses, now)
+  const unassigned = ntAccounts.filter(
+    (a) => !accountMap.some((m) => m.account === a.name)
+  ).length
 
   return (
     <div className="space-y-10">
-      <div>
-        <h1 className="text-3xl font-bold">Trading</h1>
-        <p className="text-slate-400 mt-2">
-          Reflejo en vivo de NinjaTrader 8. Los datos llegan del AddOn NexusReporter.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Trading</h1>
+          <p className="text-slate-400 mt-2">
+            Estado financiero del negocio. Las operaciones llegan de NinjaTrader; los
+            costos los administras en{' '}
+            <Link href="/panel/trading/gastos" className="text-cyan-400 hover:underline">
+              Gastos
+            </Link>
+            .
+          </p>
+        </div>
+
+        <nav className="flex gap-1 rounded-full border border-white/10 bg-slate-900/50 p-1">
+          {(['day', 'week', 'month', 'all'] as const).map((p) => (
+            <Link
+              key={p}
+              href={`/panel/trading?periodo=${p}`}
+              className={`px-4 py-1.5 rounded-full text-sm transition-colors ${
+                p === period
+                  ? 'bg-cyan-500 text-black font-semibold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {PERIOD_LABELS[p]}
+            </Link>
+          ))}
+        </nav>
       </div>
 
       {error && <p className="text-sm text-red-400">Error: {error.message}</p>}
 
-      {!error && accounts.length === 0 && (
+      {unassigned > 0 && (
+        <p className="text-sm text-amber-400 bg-amber-950/40 border border-amber-500/30 rounded-lg px-4 py-3">
+          {unassigned === 1
+            ? 'Hay 1 cuenta sin estrategia asignada.'
+            : `Hay ${unassigned} cuentas sin estrategia asignada.`}{' '}
+          <Link href="/panel/trading/cuentas" className="underline">
+            Asignarlas
+          </Link>{' '}
+          para que su resultado se atribuya al bot correcto.
+        </p>
+      )}
+
+      {/* ── KPIs ──────────────────────────────────────────────────────────── */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Stat
+          label={`Utilidad neta · ${PERIOD_LABELS[period].toLowerCase()}`}
+          value={signedMoney(summary.netProfit)}
+          valueClass={pnlClass(summary.netProfit)}
+          hint={`${money(summary.operatingPnl)} operativo − ${money(summary.expenses)} gastos`}
+        />
+        <Stat
+          label="Resultado operativo"
+          value={signedMoney(summary.operatingPnl)}
+          valueClass={pnlClass(summary.operatingPnl)}
+          hint={`${summary.trades} ${summary.trades === 1 ? 'operación' : 'operaciones'}`}
+        />
+        <Stat
+          label="Invertido a la fecha"
+          value={money(summary.totalInvested)}
+          hint={`${money(burn)}/mes recurrente`}
+        />
+        <Stat
+          label="Retorno sobre inversión"
+          value={percent(summary.roi)}
+          valueClass={pnlClass(summary.roi)}
+          hint={
+            summary.toBreakEven > 0
+              ? `Faltan ${money(summary.toBreakEven)} para recuperar`
+              : 'Inversión recuperada'
+          }
+        />
+      </section>
+
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Stat
+          label="Ganancia bruta"
+          value={money(summary.grossProfit)}
+          valueClass="text-emerald-400"
+        />
+        <Stat
+          label="Pérdida bruta"
+          value={money(summary.grossLoss)}
+          valueClass="text-red-400"
+        />
+        <Stat
+          label="Operaciones ganadoras"
+          value={percent(summary.winRate)}
+          hint="Sobre operaciones con resultado"
+        />
+        <Stat
+          label="Factor de beneficio"
+          value={ratio(summary.profitFactor)}
+          hint="Ganancia bruta ÷ pérdida bruta"
+        />
+      </section>
+
+      {/* ── Curvas ───────────────────────────────────────────────────────── */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-6">
-          <p className="text-slate-300 font-medium mb-2">Todavía no llega ningún dato.</p>
-          <p className="text-slate-400 text-sm">
-            Instala <code className="text-cyan-400">ninjatrader/NexusReporter.cs</code> en
-            NinjaTrader 8, configura el token y compila. Las cuentas aparecen aquí en
-            cuanto NT8 se conecte.
+          <h2 className="font-bold mb-1">Resultado acumulado</h2>
+          <p className="text-xs text-slate-500 mb-4">
+            Suma corrida del P&amp;L en el periodo.
+          </p>
+          <LineChart
+            data={curve.map((b) => ({ label: b.label, value: b.pnl }))}
+            reference={0}
+            emptyMessage="Todavía no hay operaciones cerradas."
+          />
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-6">
+          <h2 className="font-bold mb-1">Capital total</h2>
+          <p className="text-xs text-slate-500 mb-4">
+            Saldo sumado de todas las cuentas, un punto por día.
+          </p>
+          <LineChart
+            data={equityCurve}
+            emptyMessage="El registro diario empieza esta noche."
+          />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-slate-900/50 p-6">
+        <h2 className="font-bold mb-1">
+          Resultado por {granularity === 'month' ? 'mes' : 'día'}
+        </h2>
+        <p className="text-xs text-slate-500 mb-4">
+          Verde para take profit neto, rojo para stop loss neto.
+        </p>
+        <BarChart
+          data={buckets.map((b) => ({ label: b.label, value: b.pnl }))}
+          emptyMessage="Todavía no hay operaciones cerradas."
+        />
+      </section>
+
+      {/* ── Por estrategia ───────────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold">Aporte por estrategia</h2>
+          <p className="text-sm text-slate-400 mt-1">
+            Qué bot o portafolio está construyendo el resultado, ya descontados los costos
+            de sus cuentas.
           </p>
         </div>
-      )}
 
-      {/* ── Cuentas ─────────────────────────────────────────────────────────── */}
-      {accounts.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-bold">Cuentas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {accounts.map((a) => (
-              <div
-                key={a.name}
-                className="rounded-2xl border border-white/10 bg-slate-900/50 p-5"
-              >
-                <div className="flex items-baseline justify-between mb-4">
-                  <h3 className="font-bold text-white">{a.name}</h3>
-                  <span className="text-xs text-slate-500">{a.connection ?? '—'}</span>
-                </div>
-                <dl className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-slate-400">Capital</dt>
-                    <dd className="text-white font-medium">
-                      {money(a.cash_value, a.denomination)}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-400">Liquidación neta</dt>
-                    <dd className="text-slate-300">
-                      {money(a.net_liquidation, a.denomination)}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-400">P&amp;L realizado</dt>
-                    <dd className={pnlClass(a.realized_pnl)}>
-                      {money(a.realized_pnl, a.denomination)}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-400">P&amp;L abierto</dt>
-                    <dd className={pnlClass(a.unrealized_pnl)}>
-                      {money(a.unrealized_pnl, a.denomination)}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-400">Poder de compra</dt>
-                    <dd className="text-slate-300">
-                      {money(a.buying_power, a.denomination)}
-                    </dd>
-                  </div>
-                </dl>
-                <p className="mt-4 text-xs text-slate-500">
-                  Actualizado {when(a.reported_at)}
-                </p>
-              </div>
-            ))}
+        {byStrategy.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            Todavía no hay estrategias con cuentas asignadas.
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-900 text-slate-400 text-left">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Estrategia</th>
+                  <th className="px-4 py-3 font-medium">Cuentas</th>
+                  <th className="px-4 py-3 font-medium text-right">Ops.</th>
+                  <th className="px-4 py-3 font-medium text-right">Aciertos</th>
+                  <th className="px-4 py-3 font-medium text-right">Factor</th>
+                  <th className="px-4 py-3 font-medium text-right">Operativo</th>
+                  <th className="px-4 py-3 font-medium text-right">Costos</th>
+                  <th className="px-4 py-3 font-medium text-right">Neto</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {byStrategy.map((s) => (
+                  <tr key={s.strategyId ?? 'unassigned'} className="hover:bg-slate-900/50">
+                    <td className="px-4 py-3 text-white font-medium">{s.name}</td>
+                    <td className="px-4 py-3 text-slate-400 text-xs">
+                      {s.accounts.length > 0 ? s.accounts.join(', ') : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-300">{s.trades}</td>
+                    <td className="px-4 py-3 text-right text-slate-300">
+                      {percent(s.winRate, 0)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-300">
+                      {ratio(s.profitFactor)}
+                    </td>
+                    <td className={`px-4 py-3 text-right ${pnlClass(s.pnl)}`}>
+                      {signedMoney(s.pnl)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-400">
+                      {s.expenses > 0 ? `−${money(s.expenses)}` : '—'}
+                    </td>
+                    <td className={`px-4 py-3 text-right font-medium ${pnlClass(s.net)}`}>
+                      {signedMoney(s.net)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
-      {/* ── Posiciones abiertas ─────────────────────────────────────────────── */}
+      {/* ── Cuentas ──────────────────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="flex items-baseline justify-between gap-4 flex-wrap">
+          <h2 className="text-xl font-bold">Cuentas</h2>
+          <Link
+            href="/panel/trading/cuentas"
+            className="text-sm text-cyan-400 hover:underline"
+          >
+            Asignar estrategias
+          </Link>
+        </div>
+
+        {ntAccounts.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-6">
+            <p className="text-slate-300 font-medium mb-2">
+              Todavía no llega ningún dato de NinjaTrader.
+            </p>
+            <p className="text-slate-400 text-sm">
+              El AddOn NexusReporter reporta las cuentas en cuanto NT8 se conecta al
+              broker.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ntAccounts.map((a) => {
+                const m = accountMap.find((x) => x.account === a.name)
+                const strat = m?.strategy_id
+                  ? strategies.find((s) => s.id === m.strategy_id)?.name
+                  : null
+                return (
+                  <div
+                    key={a.name}
+                    className="rounded-2xl border border-white/10 bg-slate-900/50 p-5"
+                  >
+                    <div className="flex items-baseline justify-between gap-2 mb-1">
+                      <h3 className="font-bold text-white">{m?.label ?? a.name}</h3>
+                      <span className="text-xs text-slate-500">
+                        {m?.prop_firm ?? a.connection ?? '—'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-4 font-mono">{a.name}</p>
+
+                    <p className="text-2xl font-bold text-white">
+                      {money(a.cash_value, a.denomination === 'UsDollar' ? 'USD' : undefined)}
+                    </p>
+                    <p className="text-xs text-slate-500 mb-4">Capital actual</p>
+
+                    <dl className="space-y-1.5 text-sm">
+                      <div className="flex justify-between">
+                        <dt className="text-slate-400">P&amp;L realizado</dt>
+                        <dd className={pnlClass(a.realized_pnl)}>
+                          {signedMoney(a.realized_pnl)}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-slate-400">P&amp;L abierto</dt>
+                        <dd className={pnlClass(a.unrealized_pnl)}>
+                          {signedMoney(a.unrealized_pnl)}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-slate-400">Estrategia</dt>
+                        <dd className={strat ? 'text-cyan-400' : 'text-amber-400'}>
+                          {strat ?? 'Sin asignar'}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <p className="mt-4 text-xs text-slate-500">
+                      Actualizado {when(a.reported_at)}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+
+            {byAccount.some((a) => a.trades > 0) && (
+              <div className="overflow-x-auto rounded-2xl border border-white/10">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-900 text-slate-400 text-left">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Cuenta</th>
+                      <th className="px-4 py-3 font-medium">Estrategia</th>
+                      <th className="px-4 py-3 font-medium text-right">Ops.</th>
+                      <th className="px-4 py-3 font-medium text-right">Mejor</th>
+                      <th className="px-4 py-3 font-medium text-right">Peor</th>
+                      <th className="px-4 py-3 font-medium text-right">Neto</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {byAccount.map((a) => (
+                      <tr key={a.account} className="hover:bg-slate-900/50">
+                        <td className="px-4 py-3 text-white">{a.label ?? a.account}</td>
+                        <td className="px-4 py-3 text-slate-400">
+                          {a.strategyName ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-300">{a.trades}</td>
+                        <td className={`px-4 py-3 text-right ${pnlClass(a.bestTrade)}`}>
+                          {signedMoney(a.bestTrade)}
+                        </td>
+                        <td className={`px-4 py-3 text-right ${pnlClass(a.worstTrade)}`}>
+                          {signedMoney(a.worstTrade)}
+                        </td>
+                        <td className={`px-4 py-3 text-right font-medium ${pnlClass(a.net)}`}>
+                          {signedMoney(a.net)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* ── Posiciones abiertas ──────────────────────────────────────────── */}
       <section className="space-y-4">
         <h2 className="text-xl font-bold">Posiciones abiertas</h2>
         {positions.length === 0 ? (
@@ -208,108 +492,6 @@ export default async function TradingPage() {
           </div>
         )}
       </section>
-
-      {/* ── Operaciones cerradas ────────────────────────────────────────────── */}
-      <section className="space-y-4">
-        <div className="flex items-baseline gap-6 flex-wrap">
-          <h2 className="text-xl font-bold">Operaciones cerradas</h2>
-          {trades.length > 0 && (
-            <p className="text-sm text-slate-400">
-              Últimas {trades.length} ·{' '}
-              <span className={pnlClass(totalRealized)}>{money(totalRealized)}</span>
-              {winRate !== null && <> · {winRate}% ganadoras</>}
-            </p>
-          )}
-        </div>
-
-        {trades.length === 0 ? (
-          <p className="text-slate-400 text-sm">Todavía no hay operaciones cerradas.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border border-white/10">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-900 text-slate-400 text-left">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Cierre</th>
-                  <th className="px-4 py-3 font-medium">Cuenta</th>
-                  <th className="px-4 py-3 font-medium">Instrumento</th>
-                  <th className="px-4 py-3 font-medium">Dir.</th>
-                  <th className="px-4 py-3 font-medium text-right">Cant.</th>
-                  <th className="px-4 py-3 font-medium text-right">Entrada</th>
-                  <th className="px-4 py-3 font-medium text-right">Salida</th>
-                  <th className="px-4 py-3 font-medium text-right">Puntos</th>
-                  <th className="px-4 py-3 font-medium text-right">P&amp;L</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {trades.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-900/50">
-                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">
-                      {when(t.exit_at)}
-                    </td>
-                    <td className="px-4 py-3 text-slate-300">{t.account}</td>
-                    <td className="px-4 py-3 text-white">{t.instrument}</td>
-                    <td
-                      className={
-                        t.direction === 'Long'
-                          ? 'px-4 py-3 text-emerald-400'
-                          : 'px-4 py-3 text-red-400'
-                      }
-                    >
-                      {t.direction}
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-300">{t.quantity}</td>
-                    <td className="px-4 py-3 text-right text-slate-300">{t.entry_price}</td>
-                    <td className="px-4 py-3 text-right text-slate-300">{t.exit_price}</td>
-                    <td className={`px-4 py-3 text-right ${pnlClass(t.pnl_points)}`}>
-                      {t.pnl_points ?? '—'}
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-right font-medium ${pnlClass(t.pnl_currency)}`}
-                    >
-                      {money(t.pnl_currency)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* ── Ejecuciones ─────────────────────────────────────────────────────── */}
-      {executions.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-bold">Últimas ejecuciones</h2>
-          <div className="overflow-x-auto rounded-2xl border border-white/10">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-900 text-slate-400 text-left">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Hora</th>
-                  <th className="px-4 py-3 font-medium">Cuenta</th>
-                  <th className="px-4 py-3 font-medium">Instrumento</th>
-                  <th className="px-4 py-3 font-medium">Acción</th>
-                  <th className="px-4 py-3 font-medium text-right">Cant.</th>
-                  <th className="px-4 py-3 font-medium text-right">Precio</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {executions.map((e) => (
-                  <tr key={e.id} className="hover:bg-slate-900/50">
-                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">
-                      {when(e.executed_at)}
-                    </td>
-                    <td className="px-4 py-3 text-slate-300">{e.account}</td>
-                    <td className="px-4 py-3 text-white">{e.instrument}</td>
-                    <td className="px-4 py-3 text-slate-300">{e.order_action ?? '—'}</td>
-                    <td className="px-4 py-3 text-right text-slate-300">{e.quantity}</td>
-                    <td className="px-4 py-3 text-right text-slate-300">{e.price}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
     </div>
   )
 }
