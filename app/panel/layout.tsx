@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { Cpu, LogOut } from 'lucide-react'
 
+// Only the root sections. Cuentas and Gastos are trading sub-sections and live
+// in the sub-nav of app/panel/trading/layout.tsx.
 const navItems = [
   { href: '/panel/trading', label: 'Trading' },
-  { href: '/panel/trading/cuentas', label: 'Cuentas' },
-  { href: '/panel/trading/gastos', label: 'Gastos' },
   { href: '/panel/desarrollo', label: 'Desarrollo' },
+  { href: '/panel/inversiones', label: 'Inversiones' },
   { href: '/panel/leads', label: 'Leads' },
 ]
 

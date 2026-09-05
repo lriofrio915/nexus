@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { LineChart, Users, Wallet, Landmark, Code2 } from 'lucide-react'
+import { LineChart, Users, Wallet, Landmark, Code2, Briefcase } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-server'
 import {
   portfolioTotals,
@@ -20,6 +20,12 @@ import {
   type AccountMapRow,
   type ExpenseRow,
 } from '@/lib/trading-metrics'
+import {
+  bookTotals,
+  type InvCashFlowRow,
+  type InvClientRow,
+  type InvPositionRow,
+} from '@/lib/inv-metrics'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Panel', robots: { index: false, follow: false } }
@@ -113,10 +119,41 @@ async function devOverview() {
   }
 }
 
+/** The managed-accounts book: other people's capital and what it is worth. */
+async function invOverview() {
+  try {
+    const db = supabaseAdmin()
+    const [clients, positions, flows] = await Promise.all([
+      db.from('nexus_inv_clients').select('*'),
+      db.from('nexus_inv_positions').select('*'),
+      db.from('nexus_inv_cash_flows').select('*'),
+    ])
+
+    return bookTotals(
+      (clients.data ?? []) as InvClientRow[],
+      (positions.data ?? []) as InvPositionRow[],
+      (flows.data ?? []) as InvCashFlowRow[]
+    )
+  } catch {
+    // Same reason as devOverview: the rest of the panel must render before the
+    // nexus_inv_* migration has been applied.
+    return {
+      activeClients: 0,
+      pendingClients: 0,
+      netContributed: 0,
+      marketValue: 0,
+      unrealized: 0,
+      totalReturn: 0,
+      fees: 0,
+    }
+  }
+}
+
 export default async function PanelHome() {
-  const [{ leads, pnl, invested, capital, net, error }, dev] = await Promise.all([
+  const [{ leads, pnl, invested, capital, net, error }, dev, inv] = await Promise.all([
     overview(),
     devOverview(),
+    invOverview(),
   ])
 
   const cards = [
@@ -151,6 +188,13 @@ export default async function PanelHome() {
       hint: `${money(dev.invoiced)} facturados a clientes`,
     },
     {
+      href: '/panel/inversiones',
+      icon: Briefcase,
+      label: 'Cartera de clientes',
+      value: money(inv.marketValue),
+      hint: `${inv.activeClients} activos · ${inv.pendingClients} en apertura`,
+    },
+    {
       href: '/panel/leads',
       icon: Users,
       label: 'Leads',
@@ -178,7 +222,7 @@ export default async function PanelHome() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map((card) => {
           const Icon = card.icon
           return (
