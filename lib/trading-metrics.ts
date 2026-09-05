@@ -51,6 +51,33 @@ export interface StrategyRow {
 
 export type Period = 'day' | 'week' | 'month' | 'all'
 
+// ── Account exclusion ────────────────────────────────────────────────────────
+
+/**
+ * True when an account is explicitly switched off in the mapping.
+ *
+ * NinjaTrader reports every account it can see, including the Sim101 practice
+ * account it ships with, whose imaginary balance would otherwise be added to
+ * the business capital. Marking one inactive removes it from every figure while
+ * keeping its history.
+ *
+ * An account with no mapping row counts as active: data must never disappear
+ * from the totals just because nobody has configured it yet.
+ */
+export function isExcluded(account: string, accounts: AccountMapRow[]): boolean {
+  const m = accounts.find((a) => a.account === account)
+  return m ? !m.active : false
+}
+
+/** Drops rows belonging to accounts switched off in the mapping. */
+export function excludeInactive<T extends { account: string }>(
+  rows: T[],
+  accounts: AccountMapRow[]
+): T[] {
+  const off = new Set(accounts.filter((a) => !a.active).map((a) => a.account))
+  return off.size === 0 ? rows : rows.filter((r) => !off.has(r.account))
+}
+
 // ── Money helpers ────────────────────────────────────────────────────────────
 
 const toCents = (n: number) => Math.round(n * 100)

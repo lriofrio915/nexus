@@ -10,6 +10,8 @@ import {
   aggregateByPeriod,
   businessSummary,
   cumulative,
+  excludeInactive,
+  isExcluded,
   money,
   monthlyBurn,
   parsePeriod,
@@ -96,13 +98,19 @@ export default async function TradingPage({
     expensesRes.error ??
     equityRes.error
 
-  const allTrades = (tradesRes.data ?? []) as TradeRow[]
-  const ntAccounts = (ntAccountsRes.data ?? []) as NtAccountRow[]
-  const positions = (positionsRes.data ?? []) as PositionRow[]
   const accountMap = (mapRes.data ?? []) as AccountMapRow[]
   const strategies = (strategiesRes.data ?? []) as StrategyRow[]
   const expenses = (expensesRes.data ?? []) as ExpenseRow[]
-  const equity = (equityRes.data ?? []) as EquityRow[]
+
+  // Accounts switched off in the mapping — NinjaTrader's Sim101 among them —
+  // are dropped from every figure here. They stay visible and reactivatable in
+  // /panel/trading/cuentas.
+  const allTrades = excludeInactive((tradesRes.data ?? []) as TradeRow[], accountMap)
+  const positions = excludeInactive((positionsRes.data ?? []) as PositionRow[], accountMap)
+  const equity = excludeInactive((equityRes.data ?? []) as EquityRow[], accountMap)
+  const allNtAccounts = (ntAccountsRes.data ?? []) as NtAccountRow[]
+  const ntAccounts = allNtAccounts.filter((a) => !isExcluded(a.name, accountMap))
+  const excludedCount = allNtAccounts.length - ntAccounts.length
 
   const periodTrades = from
     ? allTrades.filter((t) => new Date(t.exit_at) >= from)
@@ -133,7 +141,7 @@ export default async function TradingPage({
 
   const burn = monthlyBurn(expenses, now)
   const unassigned = ntAccounts.filter(
-    (a) => !accountMap.some((m) => m.account === a.name)
+    (a) => !accountMap.some((m) => m.account === a.name && m.strategy_id)
   ).length
 
   return (
@@ -179,6 +187,14 @@ export default async function TradingPage({
             Asignarlas
           </Link>{' '}
           para que su resultado se atribuya al bot correcto.
+        </p>
+      )}
+
+      {excludedCount > 0 && (
+        <p className="text-xs text-slate-500">
+          {excludedCount === 1
+            ? '1 cuenta marcada como inactiva queda fuera de estas cifras.'
+            : `${excludedCount} cuentas marcadas como inactivas quedan fuera de estas cifras.`}
         </p>
       )}
 

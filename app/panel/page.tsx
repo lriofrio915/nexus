@@ -3,10 +3,13 @@ import { LineChart, Users, Wallet, Landmark } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-server'
 import {
   accrueExpenses,
+  excludeInactive,
+  isExcluded,
   money,
   pnlClass,
   signedMoney,
   sumMoney,
+  type AccountMapRow,
   type ExpenseRow,
 } from '@/lib/trading-metrics'
 
@@ -16,22 +19,33 @@ export const metadata = { title: 'Panel', robots: { index: false, follow: false 
 async function overview() {
   try {
     const db = supabaseAdmin()
-    const [leads, trades, expenses, accounts] = await Promise.all([
+    const [leads, trades, expenses, accounts, map] = await Promise.all([
       db.from('nexus_leads').select('*', { count: 'exact', head: true }),
-      db.from('nexus_nt_trades').select('pnl_currency'),
+      db.from('nexus_nt_trades').select('account, pnl_currency'),
       db
         .from('nexus_biz_expenses')
         .select('id, concept, category, amount, kind, recurrence, starts_on, ends_on, account'),
-      db.from('nexus_nt_accounts').select('cash_value'),
+      db.from('nexus_nt_accounts').select('name, cash_value'),
+      db.from('nexus_biz_accounts').select('account, label, prop_firm, strategy_id, active'),
     ])
 
-    const pnl = sumMoney((trades.data ?? []).map((t) => t.pnl_currency as number | null))
+    // Inactive accounts (NinjaTrader's Sim101 and anything else switched off)
+    // are excluded so the headline capital is money that actually exists.
+    const accountMap = (map.data ?? []) as AccountMapRow[]
+    const liveTrades = excludeInactive(
+      (trades.data ?? []) as { account: string; pnl_currency: number | null }[],
+      accountMap
+    )
+    const liveAccounts = ((accounts.data ?? []) as { name: string; cash_value: number | null }[])
+      .filter((a) => !isExcluded(a.name, accountMap))
+
+    const pnl = sumMoney(liveTrades.map((t) => t.pnl_currency))
     const invested = sumMoney(
       accrueExpenses((expenses.data ?? []) as ExpenseRow[], null, new Date()).map(
         (c) => c.amount
       )
     )
-    const capital = sumMoney((accounts.data ?? []).map((a) => a.cash_value as number | null))
+    const capital = sumMoney(liveAccounts.map((a) => a.cash_value))
 
     return {
       leads: leads.count ?? 0,
@@ -44,6 +58,7 @@ async function overview() {
         trades.error?.message ??
         expenses.error?.message ??
         accounts.error?.message ??
+        map.error?.message ??
         null,
     }
   } catch (err) {

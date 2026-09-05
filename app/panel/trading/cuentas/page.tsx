@@ -89,6 +89,11 @@ export default async function CuentasPage() {
           Vincula cada cuenta con el bot o portafolio que opera en ella. Sin esta relación
           el resultado no se puede atribuir a una estrategia.
         </p>
+        <p className="text-slate-500 text-sm mt-2 max-w-2xl">
+          Al desmarcar <span className="text-slate-300">Cuenta activa</span> la cuenta sale
+          de todas las cifras del negocio sin perder su historial. Es lo que corresponde
+          para la cuenta de práctica Sim101, cuyo saldo es ficticio.
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-400">Error: {error.message}</p>}
@@ -107,6 +112,7 @@ export default async function CuentasPage() {
         {names.map((name) => {
           const nt = ntAccounts.find((a) => a.name === name)
           const m = mappings.find((x) => x.account === name)
+          const inactive = m ? !m.active : false
           const assigned = Boolean(m?.strategy_id)
 
           return (
@@ -114,13 +120,24 @@ export default async function CuentasPage() {
               key={name}
               action={saveAccount}
               className={`rounded-2xl border p-5 bg-slate-900/50 ${
-                assigned ? 'border-white/10' : 'border-amber-500/40'
+                inactive
+                  ? 'border-white/5 opacity-60'
+                  : assigned
+                    ? 'border-white/10'
+                    : 'border-amber-500/40'
               }`}
             >
               <input type="hidden" name="account" value={name} />
 
               <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
-                <p className="font-mono text-sm text-white">{name}</p>
+                <p className="font-mono text-sm text-white">
+                  {name}
+                  {inactive && (
+                    <span className="ml-2 font-sans text-xs text-slate-500 not-italic">
+                      · fuera de las cifras
+                    </span>
+                  )}
+                </p>
                 <p className="text-xs text-slate-500">
                   {nt
                     ? `${nt.connection ?? 'sin conexión'} · ${money(nt.cash_value)}`
