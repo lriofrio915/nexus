@@ -24,8 +24,10 @@ export const siteConfig = {
     'Nexus desarrolla proyectos de software a medida para personas, profesionales independientes y empresas. Especialistas en sistemas de gestión médica y en algoritmos de trading cuantitativo.',
   url: 'https://nexus-ia.com.es',
   whatsappNumber: '593978815129',
+  /** Message pre-loaded in the WhatsApp composer when a visitor taps any contact link. */
+  whatsappMessage: 'Quiero más información',
   get whatsappUrl() {
-    return `https://wa.me/${this.whatsappNumber}`
+    return `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(this.whatsappMessage)}`
   },
 } as const
 
