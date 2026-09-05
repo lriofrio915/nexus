@@ -75,7 +75,38 @@ const registrarLead: Tool = {
     }
 
     try {
-      const { error } = await supabaseAdmin().from('nexus_leads').insert(lead)
+      const db = supabaseAdmin()
+
+      // A failure after this tool runs (a dropped stream, say) makes the client
+      // retry the whole turn, which would re-run the tool. Registering the same
+      // person twice would duplicate the row and send a second WhatsApp, so
+      // treat one contact per conversation as already handled.
+      // Matching happens in JS: telefono and email come from the model, and
+      // interpolating them into a PostgREST filter would let a comma or paren
+      // break the query.
+      const { data: priorLeads, error: lookupError } = await db
+        .from('nexus_leads')
+        .select('id, telefono, email')
+        .eq('conversation_id', ctx.conversationId)
+        .limit(20)
+
+      if (lookupError) {
+        console.error('[tools/registrar_lead] lookup failed:', lookupError.message)
+        return `Error al guardar el lead: ${lookupError.message}`
+      }
+
+      const duplicate = (priorLeads ?? []).some(
+        (prior) =>
+          (telefono !== null && prior.telefono === telefono) ||
+          (email !== null && prior.email?.toLowerCase() === email.toLowerCase())
+      )
+
+      if (duplicate) {
+        console.log('[tools/registrar_lead] already registered in this conversation')
+        return 'Este prospecto ya estaba registrado en esta conversación. No hace falta registrarlo otra vez; confirma que Luis lo contactará.'
+      }
+
+      const { error } = await db.from('nexus_leads').insert(lead)
       if (error) {
         console.error('[tools/registrar_lead] insert failed:', error.message)
         return `Error al guardar el lead: ${error.message}`
