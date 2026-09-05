@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Cpu } from 'lucide-react'
+import { Cpu, LogOut } from 'lucide-react'
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,9 +21,20 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               Prompt
             </Link>
           </nav>
-          <Link href="/" className="ml-auto text-sm text-slate-400 hover:text-cyan-400">
-            Ver sitio
-          </Link>
+          <div className="ml-auto flex items-center gap-6">
+            <Link href="/" className="text-sm text-slate-400 hover:text-cyan-400">
+              Ver sitio
+            </Link>
+            <form action="/api/panel/logout" method="post">
+              <button
+                type="submit"
+                className="flex items-center gap-2 text-sm text-slate-400 hover:text-cyan-400"
+              >
+                <LogOut className="w-4 h-4" />
+                Salir
+              </button>
+            </form>
+          </div>
         </div>
       </header>
       <main className="container mx-auto px-6 py-8">{children}</main>

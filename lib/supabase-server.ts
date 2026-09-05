@@ -1,36 +1,16 @@
-import { createServerClient } from '@supabase/ssr'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+
+/**
+ * Server-side Supabase access for the Nexus agent.
+ *
+ * Only the service-role client is used: the panel authenticates through
+ * lib/auth.ts, not Supabase Auth, so there is no cookie-bound client here.
+ */
 
 function url() {
   const v = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!v) throw new Error('NEXT_PUBLIC_SUPABASE_URL not configured')
   return v
-}
-
-/** Request-scoped client that carries the visitor's auth cookies. */
-export async function createSupabaseServerClient() {
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY not configured')
-
-  const cookieStore = await cookies()
-  return createServerClient(url(), anonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll()
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        } catch (error) {
-          // Called from a Server Component, where cookies are read-only.
-          console.error('[Supabase] Cookie set error:', error)
-        }
-      },
-    },
-  })
 }
 
 let adminClient: SupabaseClient | null = null
