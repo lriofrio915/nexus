@@ -1,6 +1,14 @@
 import Link from 'next/link'
-import { LineChart, Users, Wallet, Landmark } from 'lucide-react'
+import { LineChart, Users, Wallet, Landmark, Code2 } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-server'
+import {
+  portfolioTotals,
+  type ClientRow,
+  type InvoiceItemRow,
+  type InvoiceRow,
+  type PaymentRow,
+  type ProjectRow,
+} from '@/lib/dev-metrics'
 import {
   accrueExpenses,
   excludeInactive,
@@ -73,8 +81,43 @@ async function overview() {
   }
 }
 
+/** The software side of the business: what has been invoiced and what is owed. */
+async function devOverview() {
+  try {
+    const db = supabaseAdmin()
+    const [clients, projects, invoices, items, payments] = await Promise.all([
+      db.from('nexus_dev_clients').select('*'),
+      db.from('nexus_dev_projects').select('*'),
+      db.from('nexus_dev_invoices').select('*'),
+      db.from('nexus_dev_invoice_items').select('*'),
+      db.from('nexus_dev_payments').select('*'),
+    ])
+
+    return portfolioTotals(
+      (projects.data ?? []) as ProjectRow[],
+      (invoices.data ?? []) as InvoiceRow[],
+      (items.data ?? []) as InvoiceItemRow[],
+      (payments.data ?? []) as PaymentRow[],
+      (clients.data ?? []) as ClientRow[]
+    )
+  } catch {
+    // The trading figures must still render if the dev tables are not migrated yet.
+    return {
+      invoiced: 0,
+      collected: 0,
+      outstanding: 0,
+      recurringYearly: 0,
+      activeProjects: 0,
+      clients: 0,
+    }
+  }
+}
+
 export default async function PanelHome() {
-  const { leads, pnl, invested, capital, net, error } = await overview()
+  const [{ leads, pnl, invested, capital, net, error }, dev] = await Promise.all([
+    overview(),
+    devOverview(),
+  ])
 
   const cards = [
     {
@@ -98,6 +141,14 @@ export default async function PanelHome() {
       label: 'Invertido a la fecha',
       value: money(invested),
       hint: 'Pagos únicos y recurrentes devengados',
+    },
+    {
+      href: '/panel/desarrollo',
+      icon: Code2,
+      label: 'Por cobrar en desarrollo',
+      value: money(dev.outstanding),
+      valueClass: dev.outstanding > 0 ? 'text-amber-400' : 'text-emerald-400',
+      hint: `${money(dev.invoiced)} facturados a clientes`,
     },
     {
       href: '/panel/leads',

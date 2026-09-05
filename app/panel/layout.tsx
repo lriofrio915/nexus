@@ -20,6 +20,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <Link href="/panel/trading/gastos" className="hover:text-cyan-400">
               Gastos
             </Link>
+            <Link href="/panel/desarrollo" className="hover:text-cyan-400">
+              Desarrollo
+            </Link>
             <Link href="/panel/leads" className="hover:text-cyan-400">
               Leads
             </Link>
