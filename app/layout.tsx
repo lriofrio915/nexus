@@ -22,7 +22,13 @@ export const metadata: Metadata = {
     'agentes de IA',
     'Ecuador',
   ],
+  applicationName: siteConfig.name,
   authors: [{ name: siteConfig.legalName }],
+  creator: siteConfig.legalName,
+  publisher: siteConfig.legalName,
+  // Phone numbers are written as links where they matter; letting Safari
+  // auto-link them elsewhere breaks the layout.
+  formatDetection: { telephone: false, address: false, email: false },
   openGraph: {
     type: 'website',
     locale: 'es_EC',

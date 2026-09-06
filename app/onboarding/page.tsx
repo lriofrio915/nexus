@@ -13,11 +13,26 @@ import {
 import { submitApplication } from './actions'
 
 export const dynamic = 'force-dynamic'
+const TITLE = 'Apertura de cuenta en Interactive Brokers'
+const DESCRIPTION =
+  'Completa tus datos y sube tus documentos para que Nexus abra y gestione tu cuenta de inversión en Interactive Brokers.'
+
 export const metadata = {
-  title: 'Apertura de cuenta IBKR',
-  description: 'Formulario para abrir una cuenta de inversión en Interactive Brokers con Nexus.',
-  // Public, but there is no reason for it to be indexed.
+  title: TITLE,
+  description: DESCRIPTION,
+  // Public, but there is no reason for it to be indexed: the link is handed to
+  // one client at a time. The preview below still has to look right, because
+  // that link is opened from WhatsApp.
   robots: { index: false, follow: false },
+  alternates: { canonical: '/onboarding' },
+  openGraph: {
+    type: 'website',
+    locale: 'es_EC',
+    url: '/onboarding',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
 }
 
 const ERROR_MESSAGE: Record<string, string> = {
