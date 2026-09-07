@@ -78,6 +78,23 @@ export function excludeInactive<T extends { account: string }>(
   return off.size === 0 ? rows : rows.filter((r) => !off.has(r.account))
 }
 
+/**
+ * The same exclusion for rows that may not belong to any account.
+ *
+ * An expense charged to an inactive account has to go, or the account would
+ * subtract its cost from the business while its trades contribute nothing —
+ * the one direction that flatters nothing and distorts every total. An expense
+ * with no account is the running cost of the business itself, such as the VPS,
+ * and always counts.
+ */
+export function excludeInactiveCharges<T extends { account: string | null }>(
+  rows: T[],
+  accounts: AccountMapRow[]
+): T[] {
+  const off = new Set(accounts.filter((a) => !a.active).map((a) => a.account))
+  return off.size === 0 ? rows : rows.filter((r) => r.account === null || !off.has(r.account))
+}
+
 // ── Money helpers ────────────────────────────────────────────────────────────
 
 const toCents = (n: number) => Math.round(n * 100)

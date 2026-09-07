@@ -7,9 +7,11 @@ import ExpenseForm, {
 import DeleteExpenseButton from '@/components/panel/DeleteExpenseButton'
 import {
   accrueExpenses,
+  excludeInactiveCharges,
   money,
   monthlyBurn,
   sumMoney,
+  type AccountMapRow,
   type ExpenseRow,
 } from '@/lib/trading-metrics'
 
@@ -24,13 +26,16 @@ export default async function GastosPage() {
       .select('*')
       .order('kind')
       .order('starts_on', { ascending: true }),
-    db.from('nexus_biz_accounts').select('account, label').order('account'),
+    db
+      .from('nexus_biz_accounts')
+      .select('account, label, prop_firm, strategy_id, active')
+      .order('account'),
     db.from('nexus_nt_accounts').select('name').order('name'),
   ])
 
   const error = expensesRes.error ?? accountsRes.error ?? ntRes.error
   const expenses = (expensesRes.data ?? []) as (ExpenseRow & { notes: string | null })[]
-  const mapped = (accountsRes.data ?? []) as { account: string; label: string | null }[]
+  const mapped = (accountsRes.data ?? []) as AccountMapRow[]
   const reported = (ntRes.data ?? []) as { name: string }[]
 
   // NinjaTrader reports accounts the mapping has never been told about, and the
@@ -49,12 +54,22 @@ export default async function GastosPage() {
       reported: reportedNames.has(account),
     }))
 
+  // The list below shows every expense so any of them can still be edited, but
+  // the totals count only what an active account is costing. An expense charged
+  // to an account switched off in /panel/trading/cuentas is out of the figures,
+  // exactly like that account's trades.
+  const inactive = new Set(mapped.filter((m) => !m.active).map((m) => m.account))
+  const counted = excludeInactiveCharges(expenses, mapped)
+
   const now = new Date()
-  const accrued = accrueExpenses(expenses, null, now)
+  const accrued = accrueExpenses(counted, null, now)
   const totalAccrued = sumMoney(accrued.map((c) => c.amount))
-  const burn = monthlyBurn(expenses, now)
+  const burn = monthlyBurn(counted, now)
   const oneTimeTotal = sumMoney(
-    expenses.filter((e) => e.kind === 'one_time').map((e) => e.amount)
+    counted.filter((e) => e.kind === 'one_time').map((e) => e.amount)
+  )
+  const excludedTotal = sumMoney(
+    expenses.filter((e) => e.account && inactive.has(e.account)).map((e) => e.amount)
   )
 
   return (
@@ -65,6 +80,12 @@ export default async function GastosPage() {
           Todo lo que cuesta sostener el negocio. Los pagos únicos se cargan en su fecha;
           los recurrentes se devengan cada periodo desde que empiezan.
         </p>
+        {excludedTotal > 0 && (
+          <p className="text-slate-500 text-sm mt-2 max-w-2xl">
+            Las cifras de arriba dejan fuera {money(excludedTotal)} cargado a cuentas
+            inactivas. Vuelve a marcarlas activas en Cuentas para que cuenten.
+          </p>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-400">Error: {error.message}</p>}
@@ -97,6 +118,7 @@ export default async function GastosPage() {
           <p className="text-slate-400 text-sm">Todavía no hay gastos registrados.</p>
         ) : (
           expenses.map((e) => {
+            const isOut = Boolean(e.account && inactive.has(e.account))
             const initial: ExpenseValues = {
               concept: e.concept,
               category: e.category,
@@ -112,10 +134,19 @@ export default async function GastosPage() {
             return (
               <div
                 key={e.id}
-                className="rounded-2xl border border-white/10 bg-slate-900/50 p-4 sm:p-5"
+                className={`rounded-2xl border bg-slate-900/50 p-4 sm:p-5 ${
+                  isOut ? 'border-white/5 opacity-60' : 'border-white/10'
+                }`}
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
-                  <p className="font-bold text-white">{e.concept}</p>
+                  <p className="font-bold text-white">
+                    {e.concept}
+                    {isOut && (
+                      <span className="ml-2 text-xs font-normal text-slate-500">
+                        · cuenta inactiva, fuera de las cifras
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-slate-400">
                     {money(e.amount)}
                     {e.kind === 'recurring' && (

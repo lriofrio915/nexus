@@ -11,6 +11,7 @@ import {
   businessSummary,
   cumulative,
   excludeInactive,
+  excludeInactiveCharges,
   isExcluded,
   money,
   monthlyBurn,
@@ -100,11 +101,15 @@ export default async function TradingPage({
 
   const accountMap = (mapRes.data ?? []) as AccountMapRow[]
   const strategies = (strategiesRes.data ?? []) as StrategyRow[]
-  const expenses = (expensesRes.data ?? []) as ExpenseRow[]
 
   // Accounts switched off in the mapping — NinjaTrader's Sim101 among them —
-  // are dropped from every figure here. They stay visible and reactivatable in
-  // /panel/trading/cuentas.
+  // are dropped from every figure here, expenses included: an inactive account
+  // must not keep charging the business while contributing no result. They stay
+  // visible and reactivatable in /panel/trading/cuentas.
+  const expenses = excludeInactiveCharges(
+    (expensesRes.data ?? []) as ExpenseRow[],
+    accountMap
+  )
   const allTrades = excludeInactive((tradesRes.data ?? []) as TradeRow[], accountMap)
   const positions = excludeInactive((positionsRes.data ?? []) as PositionRow[], accountMap)
   const equity = excludeInactive((equityRes.data ?? []) as EquityRow[], accountMap)

@@ -12,6 +12,7 @@ import {
 import {
   accrueExpenses,
   excludeInactive,
+  excludeInactiveCharges,
   isExcluded,
   money,
   pnlClass,
@@ -52,12 +53,14 @@ async function overview() {
     )
     const liveAccounts = ((accounts.data ?? []) as { name: string; cash_value: number | null }[])
       .filter((a) => !isExcluded(a.name, accountMap))
+    const liveExpenses = excludeInactiveCharges(
+      (expenses.data ?? []) as ExpenseRow[],
+      accountMap
+    )
 
     const pnl = sumMoney(liveTrades.map((t) => t.pnl_currency))
     const invested = sumMoney(
-      accrueExpenses((expenses.data ?? []) as ExpenseRow[], null, new Date()).map(
-        (c) => c.amount
-      )
+      accrueExpenses(liveExpenses, null, new Date()).map((c) => c.amount)
     )
     const capital = sumMoney(liveAccounts.map((a) => a.cash_value))
 
