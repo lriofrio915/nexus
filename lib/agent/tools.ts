@@ -6,9 +6,8 @@
  */
 
 import type { ToolSchema } from '@/lib/ai-providers'
-import { sendWA } from '@/lib/sendWA'
+import { notifyAdmin } from '@/lib/notify-admin'
 import { supabaseAdmin } from '@/lib/supabase-server'
-import { siteConfig } from '@/lib/site-config'
 
 export interface ToolContext {
   conversationId: string
@@ -128,7 +127,10 @@ const registrarLead: Tool = {
       .filter(Boolean)
       .join('\n')
 
-    const wa = await sendWA(siteConfig.whatsappNumber, resumen)
+    // Goes to Luis, not to `siteConfig.whatsappNumber`: that one is the public
+    // contact line the nexus_claw bot answers, so the notice used to land in the
+    // bot's own inbox instead of reaching the person who has to call the lead.
+    const wa = await notifyAdmin(resumen)
     return wa.ok
       ? 'Lead registrado y notificado por WhatsApp. Confirma al prospecto que Luis lo contactará pronto.'
       : 'Lead registrado en la base de datos, pero la notificación por WhatsApp falló. Confirma al prospecto de todas formas.'
