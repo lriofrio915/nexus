@@ -60,9 +60,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, snapshots: 0 })
   }
 
-  // The cron fires near the end of the UTC day, so "today" is the day being
-  // closed. Re-running it overwrites rather than duplicating.
-  const day = new Date().toISOString().slice(0, 10)
+  // The cron is scheduled for 23:55 UTC, but Vercel dispatches with drift and
+  // in practice has been firing after midnight, which rolled the wall clock
+  // into the next day and stamped every snapshot with the wrong date. Anchor
+  // the day a couple of hours back so any plausible delay still resolves to
+  // the day being closed. Re-running it overwrites rather than duplicating.
+  const ANCHOR_OFFSET_MS = 2 * 60 * 60 * 1000
+  const day = new Date(Date.now() - ANCHOR_OFFSET_MS).toISOString().slice(0, 10)
 
   const rows = accounts.map((a) => ({
     day,
