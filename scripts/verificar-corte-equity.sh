@@ -22,9 +22,16 @@
 set -euo pipefail
 
 ENV_FILE=/var/www/nexus/.env.local
-# Número por defecto: el mismo que usa el panel (lib/site-config.ts). Se puede
-# sobrescribir con EQUITY_CHECK_PHONE sin tocar el script.
-TELEFONO_POR_DEFECTO=593978815129
+
+# El aviso sale por el puente de OpenClaw, no por Evolution.
+#
+# `EVOLUTION_INSTANCE` apunta a `dr-cmadminlri`, que ya no existe en el servidor
+# —la API responde 404 «The instance does not exist»—, y la única instancia viva
+# ahí es la de otro negocio. El puente, en cambio, está vivo, lo usa
+# dep-coberturas desde hace meses y encola en disco con reintentos cuando la
+# sesión de WhatsApp se cae, así que un aviso de madrugada no se pierde.
+PUENTE_URL_POR_DEFECTO=http://127.0.0.1:9091/webhook/liberty-trading
+PUENTE_ENV=/root/openclaw-webhook/webhook.env
 
 log() { echo "[corte-equity $(date -u '+%Y-%m-%d %H:%M:%S') UTC] $*"; }
 
@@ -42,7 +49,6 @@ set +a
 : "${SUPABASE_SERVICE_ROLE_KEY:?falta SUPABASE_SERVICE_ROLE_KEY}"
 
 REST="${NEXT_PUBLIC_SUPABASE_URL%/}/rest/v1"
-TELEFONO="${EQUITY_CHECK_PHONE:-$TELEFONO_POR_DEFECTO}"
 
 # El día que se acaba de cerrar. Se admite pasarlo a mano para reprocesar.
 DIA="${1:-$(date -u -d 'yesterday' +%F)}"
@@ -56,17 +62,31 @@ consultar() {
 
 avisar() {
   local texto="$1"
-  if [ -z "${EVOLUTION_API_URL:-}" ] || [ -z "${EVOLUTION_INSTANCE:-}" ] || [ -z "${EVOLUTION_API_KEY:-}" ]; then
-    log "AVISO no enviado: faltan credenciales de Evolution"
+  local url="${EQUITY_CHECK_WEBHOOK_URL:-$PUENTE_URL_POR_DEFECTO}"
+  local token="${EQUITY_CHECK_WEBHOOK_TOKEN:-}"
+
+  if [ -z "$token" ] && [ -r "$PUENTE_ENV" ]; then
+    token=$(sed -n 's/^WEBHOOK_TOKEN=//p' "$PUENTE_ENV" | head -1)
+  fi
+
+  if [ -z "$token" ]; then
+    log "AVISO no enviado: sin token del puente (ni EQUITY_CHECK_WEBHOOK_TOKEN ni $PUENTE_ENV)"
     return
   fi
-  local codigo
-  codigo=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
-    -X POST "${EVOLUTION_API_URL%/}/message/sendText/$EVOLUTION_INSTANCE" \
-    -H "apikey: $EVOLUTION_API_KEY" \
+
+  # 60 s y no 20: el puente no responde hasta que el CLI de OpenClaw ha
+  # intentado la entrega, y eso ronda los 15 s. Con 20 s el aviso se perdía por
+  # timeout justo cuando hacía falta.
+  local respuesta codigo
+  respuesta=$(curl -sS --max-time 60 -w '\n%{http_code}' -X POST "$url" \
+    -H "Authorization: Bearer $token" \
     -H 'Content-Type: application/json' \
-    --data "$(jq -nc --arg n "$TELEFONO" --arg t "$texto" '{number:$n,text:$t}')" || echo 000)
-  log "aviso WhatsApp -> HTTP $codigo"
+    --data "$(jq -nc --arg t "$texto" '{text:$t}')" || printf '\n000')
+  codigo=$(tail -1 <<<"$respuesta")
+
+  # El puente distingue entregado de encolado: un 202 significa «todavía no»,
+  # no «se perdió». Se registra tal cual para poder auditarlo después.
+  log "aviso puente -> HTTP $codigo $(head -n -1 <<<"$respuesta" | tr -d '\n' | cut -c1-160)"
 }
 
 filas=$(consultar "nexus_biz_equity_daily?select=account,equity&day=eq.$DIA")
