@@ -95,6 +95,19 @@ export async function POST(req: Request) {
         tool_calls: result.toolCalls,
       })
 
+      // Tools write rows that point at this conversation, and until now the
+      // conversation row itself was only created by `persist`, after the reply
+      // had streamed. A visitor who gave their name and phone in their very
+      // first message therefore hit the foreign key and was never registered:
+      //
+      //     [tools/registrar_lead] insert failed: insert or update on table
+      //     "nexus_leads" violates foreign key constraint
+      //
+      // From the second turn on it worked, which is why it survived. The row is
+      // created here rather than at the top of the handler so that turns without
+      // tool calls — nearly all of them — pay nothing for it.
+      await ensureConversation(conversationId, ip)
+
       for (const call of result.toolCalls) {
         const output = await executeTool(call.function.name, call.function.arguments, {
           conversationId,
@@ -154,6 +167,32 @@ function parseHistory(raw: unknown): ClientTurn[] {
     )
     .slice(-HISTORY_LIMIT)
     .map((t) => ({ role: t.role, content: t.content.slice(0, MAX_MESSAGE_CHARS) }))
+}
+
+/**
+ * Creates the conversation row so anything a tool writes has something to
+ * reference.
+ *
+ * Idempotent, and safe to call before `persist` writes the same row later: the
+ * upsert only sets the columns a fresh conversation needs, and `persist`
+ * refreshes `last_message_at` afterwards.
+ *
+ * A failure here is logged and swallowed. The tool that follows will fail on its
+ * own foreign key and report that to the model, which is a better outcome than
+ * turning a bookkeeping problem into a 502 for a visitor mid-conversation.
+ */
+async function ensureConversation(conversationId: string, ip: string) {
+  try {
+    const db = supabaseAdmin()
+    await db
+      .from('nexus_conversations')
+      .upsert(
+        { id: conversationId, source: 'web-chat', ip, last_message_at: new Date().toISOString() },
+        { onConflict: 'id' }
+      )
+  } catch (err) {
+    console.error('[api/chat] failed to ensure conversation row:', err)
+  }
 }
 
 /** Stores the user turn and the assistant reply once the stream completes. */
