@@ -38,7 +38,17 @@ export interface NotifyResult {
  */
 const TIMEOUT_MS = 60_000
 
-export async function notifyAdmin(text: string): Promise<NotifyResult> {
+/**
+ * The bridge's payload shape, and it is not `{ text }`.
+ *
+ * `extractMessage` reads `data.resumen`, then `data.message`, and if neither is
+ * there it falls back to `[${event}] ${JSON.stringify(data)}`. A body of
+ * `{ text }` therefore leaves `data` empty and is delivered — successfully,
+ * reporting `delivered: true` — as the literal string "[unknown] {}". The send
+ * succeeds and the message is worthless, which is the worst combination: the
+ * caller has no way to tell.
+ */
+export async function notifyAdmin(text: string, event = 'nexus'): Promise<NotifyResult> {
   const url = process.env.OPENCLAW_WEBHOOK_URL
   const token = process.env.OPENCLAW_WEBHOOK_TOKEN
 
@@ -54,7 +64,7 @@ export async function notifyAdmin(text: string): Promise<NotifyResult> {
     const res = await fetch(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ event, data: { message: text } }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
 

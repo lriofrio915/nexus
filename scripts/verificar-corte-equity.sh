@@ -81,9 +81,13 @@ avisar() {
   respuesta=$(curl -sS --max-time 60 -w '\n%{http_code}' -X POST "$url" \
     -H "Authorization: Bearer $token" \
     -H 'Content-Type: application/json' \
-    --data "$(jq -nc --arg t "$texto" '{text:$t}')" || printf '\n000')
+    --data "$(jq -nc --arg t "$texto" '{event:"corte-equity",data:{message:$t}}')" || printf '\n000')
   codigo=$(tail -1 <<<"$respuesta")
 
+  # El cuerpo va como {event, data:{message}}, que es lo que lee `extractMessage`
+  # del puente. Con `{text}` el mensaje se entrega igual —y responde
+  # delivered:true— pero llega como el literal "[unknown] {}".
+  #
   # El puente distingue entregado de encolado: un 202 significa «todavía no»,
   # no «se perdió». Se registra tal cual para poder auditarlo después.
   log "aviso puente -> HTTP $codigo $(head -n -1 <<<"$respuesta" | tr -d '\n' | cut -c1-160)"
