@@ -8,6 +8,13 @@
  * Daily P&L is deliberately NOT stored here: it is derived from
  * nexus_nt_trades on read, so a missed run costs a dot on one chart rather than
  * corrupting the business figures.
+ *
+ * The table used to carry a realized_pnl column as well, and it was always
+ * zero. NinjaTrader's AccountItem.RealizedProfitLoss resets when the session
+ * opens, and this snapshot is taken hours after that, so it never had anything
+ * to copy: Sim101 gained 157 between two snapshots and both recorded 0.00. A
+ * column that is structurally always zero is worse than no column, because it
+ * reads like a figure. Dropped in migration 0007.
  */
 
 import { NextResponse } from 'next/server'
@@ -48,7 +55,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await db
     .from('nexus_nt_accounts')
-    .select('name, cash_value, realized_pnl')
+    .select('name, cash_value')
 
   if (error) {
     console.error('[cron/equity] read failed:', error.message)
@@ -72,7 +79,6 @@ export async function GET(req: Request) {
     day,
     account: a.name,
     equity: a.cash_value,
-    realized_pnl: a.realized_pnl,
   }))
 
   const { error: writeError } = await db
