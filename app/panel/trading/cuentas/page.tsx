@@ -15,7 +15,6 @@ interface MapRow {
   account: string
   label: string | null
   prop_firm: string | null
-  strategy_id: string | null
   active: boolean
   started_on: string | null
 }
@@ -27,16 +26,25 @@ interface StrategyRow {
 
 export default async function CuentasPage() {
   const db = supabaseAdmin()
-  const [ntRes, mapRes, stratRes] = await Promise.all([
+  const [ntRes, mapRes, linkRes, stratRes] = await Promise.all([
     db.from('nexus_nt_accounts').select('name, connection, cash_value, reported_at').order('name'),
     db.from('nexus_biz_accounts').select('*'),
+    db.from('nexus_biz_account_strategies').select('account, strategy_id'),
     db.from('nexus_biz_strategies').select('id, name').order('name'),
   ])
 
-  const error = ntRes.error ?? mapRes.error ?? stratRes.error
+  const error = ntRes.error ?? mapRes.error ?? linkRes.error ?? stratRes.error
   const ntAccounts = (ntRes.data ?? []) as NtAccountRow[]
   const mappings = (mapRes.data ?? []) as MapRow[]
   const strategies = (stratRes.data ?? []) as StrategyRow[]
+
+  const links = (linkRes.data ?? []) as { account: string; strategy_id: string }[]
+  const strategyIdsByAccount = new Map<string, string[]>()
+  for (const l of links) {
+    const list = strategyIdsByAccount.get(l.account) ?? []
+    list.push(l.strategy_id)
+    strategyIdsByAccount.set(l.account, list)
+  }
 
   // NinjaTrader is the only source of accounts. The mapping is still merged in
   // so an account it stops reporting keeps its card, its history and whatever
@@ -49,8 +57,8 @@ export default async function CuentasPage() {
       <div>
         <h1 className="text-3xl font-bold">Cuentas</h1>
         <p className="text-slate-400 mt-2 max-w-2xl">
-          Vincula cada cuenta con el bot o portafolio que opera en ella. Sin esta relación
-          el resultado no se puede atribuir a una estrategia.
+          Vincula cada cuenta con el bot o portafolio que opera en ella — puede ser más de
+          uno. Sin esta relación el resultado no se puede atribuir a una estrategia.
         </p>
         <p className="text-slate-500 text-sm mt-2 max-w-2xl">
           Las cuentas no se crean aquí: aparecen solas en cuanto NinjaTrader las reporta.
@@ -86,7 +94,7 @@ export default async function CuentasPage() {
               account={name}
               label={m?.label ?? null}
               propFirm={m?.prop_firm ?? null}
-              strategyId={m?.strategy_id ?? null}
+              strategyIds={strategyIdsByAccount.get(name) ?? []}
               active={m?.active ?? true}
               startedOn={m?.started_on ?? null}
               nt={nt ? { connection: nt.connection, cash_value: nt.cash_value } : null}

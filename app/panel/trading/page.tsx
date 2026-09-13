@@ -71,35 +71,54 @@ export default async function TradingPage({
   // Lifetime trades are fetched once and filtered in memory: the period slice
   // and the lifetime figures both come from the same list, so ROI and
   // break-even stay consistent with whatever period is on screen.
-  const [tradesRes, ntAccountsRes, positionsRes, mapRes, strategiesRes, expensesRes, equityRes] =
-    await Promise.all([
-      db
-        .from('nexus_nt_trades')
-        .select('id, account, instrument, direction, quantity, pnl_currency, exit_at')
-        .order('exit_at', { ascending: true }),
-      db.from('nexus_nt_accounts').select('*').order('name'),
-      db.from('nexus_nt_positions').select('*').order('account'),
-      db.from('nexus_biz_accounts').select('account, label, prop_firm, strategy_id, active'),
-      db.from('nexus_biz_strategies').select('id, name, kind').order('name'),
-      db
-        .from('nexus_biz_expenses')
-        .select('id, concept, category, amount, kind, recurrence, starts_on, ends_on, account'),
-      db
-        .from('nexus_biz_equity_daily')
-        .select('day, account, equity')
-        .order('day', { ascending: true }),
-    ])
+  const [
+    tradesRes,
+    ntAccountsRes,
+    positionsRes,
+    mapRes,
+    acctStrategiesRes,
+    strategiesRes,
+    expensesRes,
+    equityRes,
+  ] = await Promise.all([
+    db
+      .from('nexus_nt_trades')
+      .select('id, account, instrument, direction, quantity, pnl_currency, exit_at')
+      .order('exit_at', { ascending: true }),
+    db.from('nexus_nt_accounts').select('*').order('name'),
+    db.from('nexus_nt_positions').select('*').order('account'),
+    db.from('nexus_biz_accounts').select('account, label, prop_firm, active'),
+    db.from('nexus_biz_account_strategies').select('account, strategy_id'),
+    db.from('nexus_biz_strategies').select('id, name, kind').order('name'),
+    db
+      .from('nexus_biz_expenses')
+      .select('id, concept, category, amount, kind, recurrence, starts_on, ends_on, account'),
+    db
+      .from('nexus_biz_equity_daily')
+      .select('day, account, equity')
+      .order('day', { ascending: true }),
+  ])
 
   const error =
     tradesRes.error ??
     ntAccountsRes.error ??
     positionsRes.error ??
     mapRes.error ??
+    acctStrategiesRes.error ??
     strategiesRes.error ??
     expensesRes.error ??
     equityRes.error
 
-  const accountMap = (mapRes.data ?? []) as AccountMapRow[]
+  const strategyLinks = (acctStrategiesRes.data ?? []) as { account: string; strategy_id: string }[]
+  const strategyIdsByAccount = new Map<string, string[]>()
+  for (const l of strategyLinks) {
+    const list = strategyIdsByAccount.get(l.account) ?? []
+    list.push(l.strategy_id)
+    strategyIdsByAccount.set(l.account, list)
+  }
+  const accountMap = (
+    (mapRes.data ?? []) as { account: string; label: string | null; prop_firm: string | null; active: boolean }[]
+  ).map((a) => ({ ...a, strategy_ids: strategyIdsByAccount.get(a.account) ?? [] })) as AccountMapRow[]
   const strategies = (strategiesRes.data ?? []) as StrategyRow[]
 
   // Accounts switched off in the mapping — NinjaTrader's Sim101 among them —
@@ -146,7 +165,7 @@ export default async function TradingPage({
 
   const burn = monthlyBurn(expenses, now)
   const unassigned = ntAccounts.filter(
-    (a) => !accountMap.some((m) => m.account === a.name && m.strategy_id)
+    (a) => !accountMap.some((m) => m.account === a.name && m.strategy_ids.length > 0)
   ).length
 
   return (
@@ -383,9 +402,10 @@ export default async function TradingPage({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {ntAccounts.map((a) => {
                 const m = accountMap.find((x) => x.account === a.name)
-                const strat = m?.strategy_id
-                  ? strategies.find((s) => s.id === m.strategy_id)?.name
-                  : null
+                const strat = (m?.strategy_ids ?? [])
+                  .map((id) => strategies.find((s) => s.id === id)?.name)
+                  .filter((n): n is string => Boolean(n))
+                  .join(', ') || null
                 return (
                   <div
                     key={a.name}
@@ -451,7 +471,7 @@ export default async function TradingPage({
                       <tr key={a.account} className="hover:bg-slate-900/50">
                         <td className="px-4 py-3 text-white">{a.label ?? a.account}</td>
                         <td className="px-4 py-3 text-slate-400">
-                          {a.strategyName ?? '—'}
+                          {a.strategyNames.length > 0 ? a.strategyNames.join(', ') : '—'}
                         </td>
                         <td className="px-4 py-3 text-right text-slate-300">{a.trades}</td>
                         <td className={`px-4 py-3 text-right ${pnlClass(a.bestTrade)}`}>

@@ -39,7 +39,10 @@ export interface AccountMapRow {
   account: string
   label: string | null
   prop_firm: string | null
-  strategy_id: string | null
+  /** An account can run more than one strategy at once (see 0009). Empty
+   * means unassigned, not "no strategy" -- it still shows up as "Sin
+   * asignar" in the breakdowns below. */
+  strategy_ids: string[]
   active: boolean
 }
 
@@ -376,6 +379,13 @@ export interface StrategyBreakdown extends Performance {
  * Accounts with no mapping are grouped under "Sin asignar" rather than dropped:
  * a trade that reached the database always belongs somewhere, and hiding it
  * would make the totals disagree with the account table.
+ *
+ * An account running more than one strategy at once (see 0009) contributes its
+ * full result to every one of them: NinjaTrader reports account-level results
+ * only, with no per-trade strategy tag to split by. Summing this table's `pnl`
+ * column therefore overcounts shared accounts on purpose -- each row answers
+ * "what did this strategy's accounts make", not "what share of the business
+ * belongs to this strategy".
  */
 export function strategyBreakdown(
   trades: TradeRow[],
@@ -383,26 +393,29 @@ export function strategyBreakdown(
   strategies: StrategyRow[],
   charges: AccrualCharge[] = []
 ): StrategyBreakdown[] {
-  const accountToStrategy = new Map(accounts.map((a) => [a.account, a.strategy_id]))
+  const accountToStrategies = new Map(accounts.map((a) => [a.account, a.strategy_ids]))
   const strategyName = new Map(strategies.map((s) => [s.id, s.name]))
 
   const groups = new Map<string, { trades: TradeRow[]; accounts: Set<string> }>()
-  const key = (id: string | null | undefined) => id ?? '__unassigned__'
+  const UNASSIGNED = '__unassigned__'
+  const keysFor = (ids: string[] | undefined) => (ids && ids.length > 0 ? ids : [UNASSIGNED])
 
   // Seed every mapped strategy so one with no trades yet still shows up.
   for (const a of accounts) {
-    const k = key(a.strategy_id)
-    const g = groups.get(k) ?? { trades: [], accounts: new Set<string>() }
-    g.accounts.add(a.account)
-    groups.set(k, g)
+    for (const k of keysFor(a.strategy_ids)) {
+      const g = groups.get(k) ?? { trades: [], accounts: new Set<string>() }
+      g.accounts.add(a.account)
+      groups.set(k, g)
+    }
   }
 
   for (const t of trades) {
-    const k = key(accountToStrategy.get(t.account))
-    const g = groups.get(k) ?? { trades: [], accounts: new Set<string>() }
-    g.trades.push(t)
-    g.accounts.add(t.account)
-    groups.set(k, g)
+    for (const k of keysFor(accountToStrategies.get(t.account))) {
+      const g = groups.get(k) ?? { trades: [], accounts: new Set<string>() }
+      g.trades.push(t)
+      g.accounts.add(t.account)
+      groups.set(k, g)
+    }
   }
 
   const rows: StrategyBreakdown[] = []
@@ -413,8 +426,8 @@ export function strategyBreakdown(
     )
     rows.push({
       ...perf,
-      strategyId: k === '__unassigned__' ? null : k,
-      name: k === '__unassigned__' ? 'Sin asignar' : (strategyName.get(k) ?? 'Desconocida'),
+      strategyId: k === UNASSIGNED ? null : k,
+      name: k === UNASSIGNED ? 'Sin asignar' : (strategyName.get(k) ?? 'Desconocida'),
       accounts: [...g.accounts].sort(),
       expenses,
       net: fromCents(toCents(perf.pnl) - toCents(expenses)),
@@ -428,7 +441,7 @@ export interface AccountBreakdown extends Performance {
   account: string
   label: string | null
   propFirm: string | null
-  strategyName: string | null
+  strategyNames: string[]
   expenses: number
   net: number
 }
@@ -439,7 +452,7 @@ export function accountBreakdown(
   strategies: StrategyRow[],
   charges: AccrualCharge[] = []
 ): AccountBreakdown[] {
-  const strategyName = new Map(strategies.map((s) => [s.id, s.name]))
+  const strategyNameById = new Map(strategies.map((s) => [s.id, s.name]))
   const byAccount = new Map<string, TradeRow[]>()
   for (const t of trades) {
     const list = byAccount.get(t.account) ?? []
@@ -463,7 +476,9 @@ export function accountBreakdown(
         account: name,
         label: m?.label ?? null,
         propFirm: m?.prop_firm ?? null,
-        strategyName: m?.strategy_id ? (strategyName.get(m.strategy_id) ?? null) : null,
+        strategyNames: (m?.strategy_ids ?? [])
+          .map((id) => strategyNameById.get(id))
+          .filter((n): n is string => Boolean(n)),
         expenses,
         net: fromCents(toCents(perf.pnl) - toCents(expenses)),
       }

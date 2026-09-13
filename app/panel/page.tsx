@@ -41,7 +41,7 @@ async function overview() {
         .from('nexus_biz_expenses')
         .select('id, concept, category, amount, kind, recurrence, starts_on, ends_on, account'),
       db.from('nexus_nt_accounts').select('name, cash_value'),
-      db.from('nexus_biz_accounts').select('account, label, prop_firm, strategy_id, active'),
+      db.from('nexus_biz_accounts').select('account, label, prop_firm, active'),
     ])
 
     // Inactive accounts (NinjaTrader's Sim101 and anything else switched off)

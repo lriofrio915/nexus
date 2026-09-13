@@ -9,7 +9,8 @@ export interface AccountCardProps {
   account: string
   label: string | null
   propFirm: string | null
-  strategyId: string | null
+  /** An account can run more than one strategy at once (see 0009). */
+  strategyIds: string[]
   active: boolean
   startedOn: string | null
   /** NinjaTrader's own view of the account, absent until it first reports. */
@@ -35,7 +36,7 @@ export default function AccountCard(props: AccountCardProps) {
 
   const [label, setLabel] = useState(props.label ?? '')
   const [propFirm, setPropFirm] = useState(props.propFirm ?? props.nt?.connection ?? '')
-  const [strategyId, setStrategyId] = useState(props.strategyId ?? '')
+  const [strategyIds, setStrategyIds] = useState<string[]>(props.strategyIds)
   const [startedOn, setStartedOn] = useState(props.startedOn ?? '')
   const [active, setActive] = useState(props.active)
 
@@ -43,7 +44,7 @@ export default function AccountCard(props: AccountCardProps) {
   const signature = JSON.stringify([
     props.label,
     props.propFirm,
-    props.strategyId,
+    [...props.strategyIds].sort(),
     props.startedOn,
     props.active,
   ])
@@ -52,13 +53,17 @@ export default function AccountCard(props: AccountCardProps) {
     setSeen(signature)
     setLabel(props.label ?? '')
     setPropFirm(props.propFirm ?? props.nt?.connection ?? '')
-    setStrategyId(props.strategyId ?? '')
+    setStrategyIds(props.strategyIds)
     setStartedOn(props.startedOn ?? '')
     setActive(props.active)
   }
 
+  function toggleStrategy(id: string, checked: boolean) {
+    setStrategyIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)))
+  }
+
   const inactive = !active
-  const assigned = Boolean(strategyId)
+  const assigned = strategyIds.length > 0
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -95,7 +100,7 @@ export default function AccountCard(props: AccountCardProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <label className="block">
           <span className="text-xs text-slate-400 block mb-1">Etiqueta</span>
           <input
@@ -119,23 +124,6 @@ export default function AccountCard(props: AccountCardProps) {
         </label>
 
         <label className="block">
-          <span className="text-xs text-slate-400 block mb-1">Estrategia</span>
-          <select
-            name="strategy_id"
-            value={strategyId}
-            onChange={(e) => setStrategyId(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">Sin asignar</option>
-            {props.strategies.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
           <span className="text-xs text-slate-400 block mb-1">Inicio</span>
           <input
             type="date"
@@ -145,6 +133,30 @@ export default function AccountCard(props: AccountCardProps) {
             className={inputClass}
           />
         </label>
+      </div>
+
+      <div className="mt-4">
+        <span className="text-xs text-slate-400 block mb-2">
+          Estrategias — puede ser más de una
+        </span>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {props.strategies.map((s) => (
+            <label key={s.id} className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                name="strategy_ids"
+                value={s.id}
+                checked={strategyIds.includes(s.id)}
+                onChange={(e) => toggleStrategy(s.id, e.target.checked)}
+                className="accent-cyan-500"
+              />
+              {s.name}
+            </label>
+          ))}
+          {props.strategies.length === 0 && (
+            <span className="text-sm text-slate-500">No hay estrategias creadas todavía.</span>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4 mt-4">

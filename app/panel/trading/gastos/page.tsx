@@ -28,7 +28,7 @@ export default async function GastosPage() {
       .order('starts_on', { ascending: true }),
     db
       .from('nexus_biz_accounts')
-      .select('account, label, prop_firm, strategy_id, active')
+      .select('account, label, prop_firm, active')
       .order('account'),
     db.from('nexus_nt_accounts').select('name').order('name'),
   ])
