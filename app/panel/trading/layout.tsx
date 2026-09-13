@@ -7,6 +7,7 @@ const subNavItems = [
   { href: '/panel/trading', label: 'Resumen' },
   { href: '/panel/trading/cuentas', label: 'Cuentas' },
   { href: '/panel/trading/gastos', label: 'Gastos' },
+  { href: '/panel/trading/clientes', label: 'Clientes' },
 ]
 
 export default function TradingLayout({ children }: { children: React.ReactNode }) {
