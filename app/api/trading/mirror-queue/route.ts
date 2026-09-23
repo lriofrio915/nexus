@@ -20,12 +20,27 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-server'
 import { clientIp, rateLimit } from '@/lib/rate-limit'
 import { authorizeMirrorBridge } from '@/lib/mirror-bridge-auth'
-import { MIRROR_ACCOUNT, MIRROR_STRATEGIES } from '@/lib/trading-mirror'
+import { MIRROR_TARGETS } from '@/lib/trading-mirror'
 
 export const runtime = 'nodejs'
 
 const RATE_LIMIT = 120
 const MAX_BATCH = 50
+
+/** PostgREST quoting: names like "PJ Capital Delta 2" carry spaces. */
+const quote = (v: string) => `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+
+/**
+ * Exact (account, strategy) pairs from MIRROR_TARGETS as one PostgREST `or`.
+ * Filtering by "any listed account" x "any listed strategy" would also match a
+ * PJ bot run on Sim101; that row would never be acked and would sit in the
+ * first MAX_BATCH forever, starving the queue.
+ */
+const MIRROR_PAIRS_FILTER = Object.entries(MIRROR_TARGETS)
+  .map(([account, strategies]) =>
+    `and(account.eq.${quote(account)},strategy.in.(${Array.from(strategies).map(quote).join(',')}))`
+  )
+  .join(',')
 
 export async function GET(req: Request) {
   const ip = clientIp(req.headers)
@@ -45,8 +60,7 @@ export async function GET(req: Request) {
   const { data, error } = await db
     .from('nexus_nt_strategy_events')
     .select('id, account, strategy, instrument, event_type, direction, quantity, price, stop_price, pnl_currency, occurred_at')
-    .eq('account', MIRROR_ACCOUNT)
-    .in('strategy', Array.from(MIRROR_STRATEGIES))
+    .or(MIRROR_PAIRS_FILTER)
     .is('mirrored_at', null)
     .order('occurred_at', { ascending: true })
     .limit(MAX_BATCH)
