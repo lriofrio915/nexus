@@ -15,6 +15,8 @@ import {
   validatePayload,
   type IngestPayload,
 } from '@/lib/trading-ingest'
+import { notifyAdmin } from '@/lib/notify-admin'
+import { isMirrorTarget, formatMirrorMessage } from '@/lib/trading-mirror'
 
 export const runtime = 'nodejs'
 
@@ -53,7 +55,7 @@ export async function POST(req: Request) {
 
   const payload = body as IngestPayload
   const db = supabaseAdmin()
-  const applied = { accounts: 0, executions: 0, positions: 0, trades: 0 }
+  const applied = { accounts: 0, executions: 0, positions: 0, trades: 0, strategyEvents: 0 }
 
   try {
     if (payload.accounts?.length) {
@@ -150,11 +152,41 @@ export async function POST(req: Request) {
       }
       applied.positions = payload.positions.length
     }
+    if (payload.strategyEvents?.length) {
+      const rows = payload.strategyEvents.map((s) => ({
+        id: s.id,
+        account: s.account,
+        strategy: s.strategy,
+        instrument: s.instrument,
+        event_type: s.eventType,
+        direction: s.direction,
+        quantity: s.quantity,
+        price: s.price ?? null,
+        stop_price: s.stopPrice ?? null,
+        pnl_currency: s.pnlCurrency ?? null,
+        occurred_at: s.occurredAt,
+      }))
+      const { error } = await db.from('nexus_nt_strategy_events').upsert(rows, { onConflict: 'id' })
+      if (error) throw new Error(`strategyEvents: ${error.message}`)
+      applied.strategyEvents = rows.length
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[trading/events] write failed:', msg)
     // 500 so the AddOn keeps the batch queued and retries it.
     return NextResponse.json({ error: 'No se pudo guardar el lote.' }, { status: 500 })
+  }
+
+  // Notificación WhatsApp — solo para la cuenta/estrategias del espejo
+  // (TRADING_PLAN_IBKR_MIRROR.md). Fuera del try/catch de arriba: un fallo al
+  // avisar no debe hacer que el AddOn reintente un lote ya guardado.
+  for (const event of payload.strategyEvents ?? []) {
+    if (!isMirrorTarget(event.account, event.strategy)) continue
+    const message = formatMirrorMessage(event)
+    const result = await notifyAdmin(message, 'nexus-trading')
+    if (!result.ok) {
+      console.error(`[trading/events] notifyAdmin failed for ${event.id}:`, result.error)
+    }
   }
 
   return NextResponse.json({ ok: true, applied })

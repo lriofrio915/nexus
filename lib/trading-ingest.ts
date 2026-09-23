@@ -89,11 +89,32 @@ export interface TradeRecord {
   exitAt: string
 }
 
+/**
+ * One open/stop-move/close event for a single mirrored strategy. Sent by
+ * NexusStrategyReporter.cs, called from inside the strategy itself — NT8's
+ * account-level events (above) carry no strategy identity, so this is the
+ * only place that information can come from.
+ */
+export interface StrategyEventRecord {
+  id: string
+  account: string
+  strategy: string
+  instrument: string
+  eventType: 'opened' | 'stop_moved' | 'closed'
+  direction: 'Long' | 'Short'
+  quantity: number
+  price?: number | null
+  stopPrice?: number | null
+  pnlCurrency?: number | null
+  occurredAt: string
+}
+
 export interface IngestPayload {
   accounts?: AccountSnapshot[]
   executions?: ExecutionRecord[]
   positions?: PositionRecord[]
   trades?: TradeRecord[]
+  strategyEvents?: StrategyEventRecord[]
 }
 
 /** Upper bound per section, so one malformed batch cannot flood the tables. */
@@ -136,7 +157,7 @@ export function validatePayload(body: unknown): ValidationResult {
   }
   const p = body as Record<string, unknown>
 
-  for (const key of ['accounts', 'executions', 'positions', 'trades']) {
+  for (const key of ['accounts', 'executions', 'positions', 'trades', 'strategyEvents']) {
     const section = p[key]
     if (section === undefined) continue
     if (!Array.isArray(section)) {
@@ -220,6 +241,28 @@ export function validatePayload(body: unknown): ValidationResult {
     }
     if (!isIsoDate(t.entryAt) || !isIsoDate(t.exitAt)) {
       return { ok: false, error: 'trades[] requiere entryAt y exitAt ISO.' }
+    }
+  }
+
+  for (const s of (p.strategyEvents ?? []) as Record<string, unknown>[]) {
+    if (!nonEmptyString(s.id)) return { ok: false, error: 'strategyEvents[].id requerido.' }
+    if (!nonEmptyString(s.account) || !nonEmptyString(s.strategy) || !nonEmptyString(s.instrument)) {
+      return { ok: false, error: 'strategyEvents[] requiere account, strategy e instrument.' }
+    }
+    if (s.eventType !== 'opened' && s.eventType !== 'stop_moved' && s.eventType !== 'closed') {
+      return { ok: false, error: 'strategyEvents[].eventType debe ser opened, stop_moved o closed.' }
+    }
+    if (s.direction !== 'Long' && s.direction !== 'Short') {
+      return { ok: false, error: 'strategyEvents[].direction debe ser Long o Short.' }
+    }
+    if (!Number.isInteger(s.quantity) || (s.quantity as number) <= 0) {
+      return { ok: false, error: 'strategyEvents[].quantity debe ser un entero positivo.' }
+    }
+    if (!optionalNumber(s.price) || !optionalNumber(s.stopPrice) || !optionalNumber(s.pnlCurrency)) {
+      return { ok: false, error: 'strategyEvents[] tiene campos numéricos inválidos.' }
+    }
+    if (!isIsoDate(s.occurredAt)) {
+      return { ok: false, error: 'strategyEvents[].occurredAt debe ser una fecha ISO.' }
     }
   }
 

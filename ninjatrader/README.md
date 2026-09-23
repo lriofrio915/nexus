@@ -7,6 +7,26 @@ de las cuentas al panel privado de Nexus.
 NT8 (tu PC Windows) ──POST──> /api/trading/events ──> Supabase ──> /panel/trading
 ```
 
+## NexusStrategyReporter — reporte por estrategia (espejo NT8 → WhatsApp → IBKR)
+
+`NexusReporter.cs` reporta a nivel de **cuenta**: NT8 no expone a qué
+estrategia pertenece un fill (`Account.ExecutionUpdate` no lleva esa
+información). `NexusStrategyReporter.cs` es un helper separado, con su propia
+cola/timer/reintentos, que las estrategias individuales llaman directamente
+desde su propio `OnExecutionUpdate`/`OnOrderUpdate` — ahí sí se conoce el
+nombre de la estrategia (`this.Name`).
+
+Hoy lo usan las 3 estrategias del espejo automático a IBKR (ver
+`TRADING_PLAN_IBKR_MIRROR.md` en el workspace de nexus_claw):
+`PROD_Bot_NQ_WeekendEffect_1min_ETH`, `PROD_Bot_NQ_MomentumApertura_30min_RTH`
+y `PROD_Bot_NQ_ZigZag_Breakout_5min_RTH`.
+
+Instalación: copiar `NexusStrategyReporter.cs` junto a las estrategias, en
+`Documents\NinjaTrader 8\bin\Custom\Strategies\NexusStrategyReporter.cs`, y
+configurar el mismo `Endpoint`/`Token` que `NexusReporter.cs` antes de
+compilar (F5). Envía al mismo endpoint, en una sección `strategyEvents`
+aparte del payload que ya manda el AddOn de cuenta.
+
 ## Qué reporta
 
 | Qué | Cuándo | Tabla |
