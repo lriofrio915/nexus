@@ -56,6 +56,12 @@ export async function POST(req: Request) {
   const payload = body as IngestPayload
   const db = supabaseAdmin()
   const applied = { accounts: 0, executions: 0, positions: 0, trades: 0, strategyEvents: 0 }
+  // Strategy event ids already stored before this batch. NexusStrategyReporter
+  // gives up after 15 s and resends the same batch; since this route awaits
+  // the WhatsApp delivery (often >15 s), every resend used to notify again —
+  // 2026-09-23: one Overnight Drift opening went out 100+ times, one every 5 s.
+  // A resend is still upserted (idempotent) but never notified twice.
+  let alreadyStored = new Set<string>()
 
   try {
     if (payload.accounts?.length) {
@@ -166,6 +172,12 @@ export async function POST(req: Request) {
         pnl_currency: s.pnlCurrency ?? null,
         occurred_at: s.occurredAt,
       }))
+      const { data: existing, error: existingError } = await db
+        .from('nexus_nt_strategy_events')
+        .select('id')
+        .in('id', rows.map((r) => r.id))
+      if (existingError) throw new Error(`strategyEvents lookup: ${existingError.message}`)
+      alreadyStored = new Set((existing ?? []).map((r) => r.id as string))
       const { error } = await db.from('nexus_nt_strategy_events').upsert(rows, { onConflict: 'id' })
       if (error) throw new Error(`strategyEvents: ${error.message}`)
       applied.strategyEvents = rows.length
@@ -182,6 +194,7 @@ export async function POST(req: Request) {
   // avisar no debe hacer que el AddOn reintente un lote ya guardado.
   for (const event of payload.strategyEvents ?? []) {
     if (!isMirrorTarget(event.account, event.strategy)) continue
+    if (alreadyStored.has(event.id)) continue
     const message = formatMirrorMessage(event)
     const result = await notifyAdmin(message, 'nexus-trading')
     if (!result.ok) {
